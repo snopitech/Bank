@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Change Verification</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f5f7fa;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 0; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header { 
+            background: linear-gradient(135deg, #dc2626, #b91c1c); 
+            color: white; 
+            padding: 30px 20px; 
+            text-align: center; 
+        }
+        .header h1 { 
+            margin: 0; 
+            font-size: 28px; 
+            font-weight: 600;
+        }
+        .header p { 
+            margin: 10px 0 0 0; 
+            opacity: 0.9; 
+            font-size: 16px;
+        }
+        .content { 
+            padding: 30px; 
+        }
+        .user-info {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 4px solid #3b82f6;
+        }
+        .user-info p {
+            margin: 8px 0;
+            color: #334155;
+        }
+        .verification-box {
+            background: #f0f9ff;
+            border: 2px dashed #0ea5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        .verification-box p {
+            margin: 0 0 15px 0;
+            color: #0369a1;
+            font-weight: 500;
+        }
+        .btn-verify {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        .btn-verify:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        }
+        .manual-link {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fef3c7;
+            border-radius: 6px;
+            word-break: break-all;
+            font-size: 14px;
+            color: #92400e;
+        }
+        .warning {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            margin: 25px 0;
+            border-radius: 6px;
+        }
+        .warning h3 {
+            color: #dc2626;
+            margin-top: 0;
+        }
+        .footer { 
+            margin-top: 30px; 
+            padding-top: 20px; 
+            border-top: 1px solid #e2e8f0; 
+            color: #64748b; 
+            font-size: 13px; 
+            text-align: center;
+        }
+        .logo {
+            font-weight: bold;
+            color: #dc2626;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Verify Your Email Change</h1>
+            <p>Snopitech Bank Account Security</p>
+        </div>
+        
+        <div class="content">
+            <p>Hello <strong th:text="${userName}">User</strong>,</p>
+            
+            <div class="user-info">
+                <p>You have requested to change your email address associated with your Snopitech Bank account.</p>
+                <p><strong>Current Email:</strong> <span th:text="${toEmail}">current@example.com</span></p>
+                <p><strong>New Email Requested:</strong> <span th:text="${newEmail}">new@example.com</span></p>
+                <p><strong>Request Time:</strong> <span th:text="${requestTime}">Just now</span></p>
+            </div>
+            
+            <div class="verification-box">
+                <p>Please verify this change by clicking the button below:</p>
+                <a th:href="${verificationLink}" class="btn-verify">Verify Email Change</a>
+            </div>
+            
+            <p>Or copy and paste this link into your browser:</p>
+            <div class="manual-link">
+                <span th:text="${verificationLink}">verification-link</span>
+            </div>
+            
+            <div class="warning">
+                <h3>⚠️ Important Security Notice</h3>
+                <p>If you did NOT request this email change, please:</p>
+                <ol>
+                    <li><strong>DO NOT</strong> click the verification link</li>
+                    <li>Change your account password immediately</li>
+                    <li>Contact our support team at support@snopitechbank.com</li>
+                    <li>Review your recent account activity</li>
+                </ol>
+            </div>
+            
+            <p>This verification link will expire in <strong>1 hour</strong> for security reasons.</p>
+            <p>If you have any questions, please contact our customer support team.</p>
+        </div>
+        
+        <div class="footer">
+            <p class="logo">Snopitech Bank</p>
+            <p>Secure Banking for the Digital Age</p>
+            <p>© <span th:text="${currentYear}">2024</span> Snopitech Bank. All rights reserved.</p>
+            <p>This is an automated message, please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
