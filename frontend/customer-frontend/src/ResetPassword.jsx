@@ -3,6 +3,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 
 export default function ResetPassword() {
+  console.log("🔥 ResetPassword component is rendering!");
+  console.log("📍 Current location:", window.location.href);
+  console.log("🔑 Token from URL:", new URLSearchParams(window.location.search).get("token"));
   const navigate = useNavigate();
   const location = useLocation();
   const [token, setToken] = useState("");
@@ -26,32 +29,45 @@ export default function ResetPassword() {
   }, [location]);
 
   // Verify token on component mount
-  useEffect(() => {
-    if (!token) {
+useEffect(() => {
+  let isMounted = true;
+  
+  if (!token) {
+    if (isMounted) {
       setIsValidToken(false);
       setIsLoading(false);
-      return;
     }
+    return;
+  }
 
-    const verifyToken = async () => {
-      try {
-        const res = await fetch(`http://localhost:8080/auth/verify-reset-token/${token}`);
-        
+  const verifyToken = async () => {
+    try {
+      const res = await fetch(`http://localhost:8080/auth/verify-reset-token/${token}`);
+      
+      if (isMounted) {
         if (res.ok) {
           setIsValidToken(true);
         } else {
           setIsValidToken(false);
         }
-      } catch (err) {
+      }
+    } catch (err) {
+      if (isMounted) {
         setIsValidToken(false);
-      } finally {
+      }
+    } finally {
+      if (isMounted) {
         setIsLoading(false);
       }
-    };
+    }
+  };
 
-    verifyToken();
-  }, [token]);
-
+  verifyToken();
+  
+  return () => {
+    isMounted = false;
+  };
+}, [token]); // Make sure this is ONLY [token]
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -152,7 +168,7 @@ export default function ResetPassword() {
         // Redirect after 3 seconds
         setTimeout(() => {
           console.log("🚀 Now redirecting to /login");
-          navigate("/login");
+          window.location.href = "/";
         }, 3000);
       } else {
         // Handle error - show backend error message or default

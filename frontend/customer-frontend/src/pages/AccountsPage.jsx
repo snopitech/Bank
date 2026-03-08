@@ -50,12 +50,14 @@ import DesignCard from '../components/account-pages/DesignCard';
 import CardLimits from '../components/account-pages/CardLimits';
 import DigitalWallets from '../components/account-pages/DigitalWallets';
 import ForeignCurrency from '../components/account-pages/ForeignCurrency';
-import BusinessAccounts from '../components/account-pages/BusinessAccounts';
-// etc...
+import BusinessAccountApplications from '../components/account-pages/BusinessAccountApplications';
+import CreditAccountApplications from '../components/account-pages/CreditAccountApplications'; // Add this import
+import LoanApplicationForm from '../components/account-pages/LoanApplicationForm';
 
 const AccountsPage = () => {
   const navigate = useNavigate();
   const [selectedSection, setSelectedSection] = useState('summary');
+  const [showAccountOptions, setShowAccountOptions] = useState(false); // For account type selection
 
   // Contact Admin Page Component
   const ContactAdmin = () => (
@@ -273,8 +275,77 @@ const AccountsPage = () => {
     }
   ];
 
-  // Render the selected content component
-  const renderContent = () => {
+  // Account type selection modal
+  const AccountTypeSelector = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Select Account Type</h2>
+        <p className="text-gray-600 mb-6">Choose the type of account you'd like to open</p>
+        
+        <div className="space-y-4">
+          {/* Business Account Option */}
+          <button
+            onClick={() => {
+              setSelectedSection('business-account');
+              setShowAccountOptions(false);
+            }}
+            className="w-full p-4 border-2 border-purple-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition text-left flex items-center"
+          >
+            <div className="bg-purple-100 p-3 rounded-full mr-4">
+              <BuildingOfficeIcon className="h-6 w-6 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-800">Business Account</h3>
+              <p className="text-sm text-gray-500">For your business needs</p>
+            </div>
+          </button>
+
+          {/* Credit Card Option */}
+          <button
+            onClick={() => {
+              setSelectedSection('credit-account');
+              setShowAccountOptions(false);
+            }}
+            className="w-full p-4 border-2 border-blue-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition text-left flex items-center"
+          >
+            <div className="bg-blue-100 p-3 rounded-full mr-4">
+              <CreditCardIcon className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-800">Credit Card</h3>
+              <p className="text-sm text-gray-500">Build credit and earn rewards</p>
+            </div>
+          </button>
+          {/* Loan Account Option */}
+          <button
+          onClick={() => {
+          setSelectedSection('loan-account');
+          setShowAccountOptions(false);
+          }}
+          className="w-full p-4 border-2 border-green-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition text-left flex items-center"
+          >
+          <div className="bg-green-100 p-3 rounded-full mr-4">
+          <BanknotesIcon className="h-6 w-6 text-green-600" />
+          </div>
+          <div>
+          <h3 className="font-semibold text-gray-800">Loan Account</h3>
+          <p className="text-sm text-gray-500">Apply for a personal loan</p>
+          </div>
+          </button>
+
+        </div>
+        <button
+          onClick={() => setShowAccountOptions(false)}
+          className="mt-6 w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+    );
+
+     // Render the selected content component
+    const renderContent = () => {
     switch(selectedSection) {
       case 'summary':
         return <AccountSummary />;
@@ -303,7 +374,7 @@ const AccountsPage = () => {
       case 'track-claims':
         return <TrackClaims />;
       case 'close-account':
-        return <ContactAdmin />; // ← Now shows contact admin page instead of CloseAccount
+        return <ContactAdmin />;
       case 'manage-cards':
         return <ManageCards />;
       case 'card-on-off':
@@ -322,8 +393,12 @@ const AccountsPage = () => {
         return <DigitalWallets />;
       case 'foreign-currency':
         return <ForeignCurrency />;
-      case 'open-account':
-        return <BusinessAccounts />;
+      case 'business-account':
+        return <BusinessAccountApplications />;
+      case 'credit-account':
+        return <CreditAccountApplications />;
+      case 'loan-account':
+        return <LoanApplicationForm />;
       default:
         return (
           <div className="p-4">
@@ -370,7 +445,13 @@ const AccountsPage = () => {
                       {section.items.map((item) => (
                         <button
                           key={item.id}
-                          onClick={() => setSelectedSection(item.id)}
+                          onClick={() => {
+                            if (item.id === 'open-account') {
+                              setShowAccountOptions(true);
+                            } else {
+                              setSelectedSection(item.id);
+                            }
+                          }}
                           className={`w-full text-left px-4 py-2.5 flex items-center hover:bg-red-50 transition-colors ${
                             selectedSection === item.id 
                               ? 'bg-red-50 text-red-700 border-l-4 border-red-700' 
@@ -398,6 +479,9 @@ const AccountsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Account Type Selector Modal */}
+      {showAccountOptions && <AccountTypeSelector />}
 
       {/* Consistent Footer */}
       <footer className="bg-white border-t border-gray-200 py-4 flex-shrink-0">

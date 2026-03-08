@@ -42,6 +42,9 @@ public class EmployeeDTO {
     private String emergencyRelationship;
     private String emergencyPhone;
     
+    private boolean totpEnabled;
+    private boolean totpSetupCompleted;
+
     // System Fields
     private String status;
     private LocalDateTime createdAt;
@@ -347,4 +350,20 @@ public class EmployeeDTO {
     public void setLastLoginAt(LocalDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
     }
+    // Add getters and setters
+public boolean isTotpEnabled() {
+    return totpEnabled;
+}
+
+public void setTotpEnabled(boolean totpEnabled) {
+    this.totpEnabled = totpEnabled;
+}
+
+public boolean isTotpSetupCompleted() {
+    return totpSetupCompleted;
+}
+
+public void setTotpSetupCompleted(boolean totpSetupCompleted) {
+    this.totpSetupCompleted = totpSetupCompleted;
+}
 }

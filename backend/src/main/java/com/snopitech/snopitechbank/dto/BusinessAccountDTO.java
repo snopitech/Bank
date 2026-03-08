@@ -36,6 +36,9 @@ public class BusinessAccountDTO {
     private Integer estimatedMonthlyTransactions;
     private boolean isActive;
     private boolean isClosed;
+    
+    // ===== NEW: Disabled field =====
+    private boolean isDisabled;
 
     // ===== NEW: Application tracking fields =====
     private String applicationStatus;
@@ -56,7 +59,7 @@ public class BusinessAccountDTO {
     // Constructors
     public BusinessAccountDTO() {}
 
-    // Full constructor with all fields
+    // Full constructor with all fields - UPDATED with disabled parameter
     public BusinessAccountDTO(Long id, Long userId, Long accountId, Long cardId,
                               String businessName, String ein, String businessType,
                               String industry, Integer yearsInOperation, Double annualRevenue,
@@ -68,7 +71,8 @@ public class BusinessAccountDTO {
                               Boolean verified, LocalDateTime verifiedDate,
                               Double estimatedMonthlyVolume, Integer estimatedMonthlyTransactions,
                               String accountNumber, Double accountBalance, String accountType,
-                              String maskedCardNumber, String cardStatus) {
+                              String maskedCardNumber, String cardStatus,
+                              boolean isDisabled) {  // ADDED this parameter
         this.id = id;
         this.userId = userId;
         this.accountId = accountId;
@@ -105,7 +109,8 @@ public class BusinessAccountDTO {
         this.accountType = accountType;
         this.maskedCardNumber = maskedCardNumber;
         this.cardStatus = cardStatus;
-        this.isActive = "APPROVED".equals(status) || "ACTIVE".equals(status);
+        this.isDisabled = isDisabled;  // ADDED this line
+        this.isActive = ("APPROVED".equals(status) || "ACTIVE".equals(status)) && !isDisabled;
         this.isClosed = "CLOSED".equals(status);
         
         // Set application status based on main status
@@ -172,6 +177,15 @@ public class BusinessAccountDTO {
             return 0.0;
         }
         return accountBalance;
+    }
+
+    // ===== NEW: Getter and Setter for disabled field =====
+    public boolean isDisabled() {
+        return isDisabled;
+    }
+
+    public void setDisabled(boolean disabled) {
+        isDisabled = disabled;
     }
 
     // Getters and Setters for new fields
@@ -427,7 +441,7 @@ public class BusinessAccountDTO {
 
     public void setStatus(String status) {
         this.status = status;
-        this.isActive = "APPROVED".equals(status) || "ACTIVE".equals(status);
+        this.isActive = ("APPROVED".equals(status) || "ACTIVE".equals(status)) && !isDisabled;
         this.isClosed = "CLOSED".equals(status);
         
         // Update application status

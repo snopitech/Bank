@@ -13,7 +13,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByAccountId(Long accountId);
 
     List<Transaction> findByAccountIdOrderByTimestampDesc(Long accountId);
-
+    
+    List<Transaction> findByAccountIdAndTypeInOrderByTimestampDesc(Long accountId, List<String> types);
     
 
     @Query("SELECT t FROM Transaction t WHERE t.accountId = :accountId AND t.timestamp BETWEEN :startDate AND :endDate ORDER BY t.timestamp DESC")

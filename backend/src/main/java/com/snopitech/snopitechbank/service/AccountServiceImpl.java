@@ -560,9 +560,10 @@ public class AccountServiceImpl implements AccountService {
         Account account = accountRepository.findById(accountId)
             .orElseThrow(() -> new RuntimeException("Account not found with id: " + accountId));
         
-        if (account.getBalance() > 0) {
-            throw new RuntimeException("Cannot delete account with positive balance");
-        }
+        // Balance check removed - allow deletion with any balance
+        // if (account.getBalance() > 0) {
+        //     throw new RuntimeException("Cannot delete account with positive balance");
+        // }
         
         // First, delete any associated cards (fixes foreign key constraint)
         List<Card> cards = cardRepository.findByAccountId(accountId);
@@ -1259,6 +1260,8 @@ public class AccountServiceImpl implements AccountService {
         
         return statementRepository.findByAccountAndYearOrderByMonthDesc(account, year);
     }
+
+    
 
     @Override
     public Statement generateStatement(Long accountId, int year, int month) {

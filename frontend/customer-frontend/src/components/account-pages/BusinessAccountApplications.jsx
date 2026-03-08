@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
   BuildingOfficeIcon,
-  CreditCardIcon,
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
@@ -15,7 +14,9 @@ import {
   ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 
-const BusinessAccounts = () => {
+const API_BASE = "http://localhost:8080";
+
+const BusinessAccountApplications = () => {
   const [businessAccounts, setBusinessAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,8 +33,8 @@ const BusinessAccounts = () => {
   const [statementPeriod, setStatementPeriod] = useState('30days');
   const [showFullNumbers, setShowFullNumbers] = useState({});
   
-  // Form state for opening new account
-  const [formData, setFormData] = useState({
+  // Business form state
+  const [businessFormData, setBusinessFormData] = useState({
     businessName: '',
     ein: '',
     businessType: 'LLC',
@@ -90,7 +91,7 @@ const BusinessAccounts = () => {
         return;
       }
 
-      const response = await fetch(`/api/business/accounts/user/${userId}`);
+      const response = await fetch(`${API_BASE}/api/business/accounts/user/${userId}`);
       if (!response.ok) throw new Error('Failed to fetch business accounts');
       const data = await response.json();
       setBusinessAccounts(data);
@@ -104,7 +105,7 @@ const BusinessAccounts = () => {
   const fetchTransactions = async (accountId) => {
     setTransactionsLoading(true);
     try {
-      const response = await fetch(`/api/accounts/${accountId}/transactions`);
+      const response = await fetch(`${API_BASE}/api/accounts/${accountId}/transactions`);
       if (!response.ok) throw new Error('Failed to fetch transactions');
       const data = await response.json();
       setTransactions(data);
@@ -117,7 +118,7 @@ const BusinessAccounts = () => {
 
   const fetchBusinessTypes = async () => {
     try {
-      const response = await fetch('/api/business/accounts/types');
+      const response = await fetch(`${API_BASE}/api/business/accounts/types`);
       if (!response.ok) throw new Error('Failed to fetch business types');
       const data = await response.json();
       setBusinessTypes(data);
@@ -128,7 +129,7 @@ const BusinessAccounts = () => {
 
   const fetchIndustries = async () => {
     try {
-      const response = await fetch('/api/business/accounts/industries');
+      const response = await fetch(`${API_BASE}/api/business/accounts/industries`);
       if (!response.ok) throw new Error('Failed to fetch industries');
       const data = await response.json();
       setIndustries(data);
@@ -137,19 +138,19 @@ const BusinessAccounts = () => {
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleBusinessInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setBusinessFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleBusinessSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.businessName || !formData.ein || !formData.annualRevenue || 
-        !formData.yearsInOperation || !formData.numberOfEmployees) {
+    if (!businessFormData.businessName || !businessFormData.ein || !businessFormData.annualRevenue || 
+        !businessFormData.yearsInOperation || !businessFormData.numberOfEmployees) {
       alert('Please fill in all required fields');
       return;
     }
@@ -158,17 +159,17 @@ const BusinessAccounts = () => {
     try {
       const userId = getLoggedInUserId();
       const requestData = {
-        ...formData,
+        ...businessFormData,
         userId,
-        yearsInOperation: parseInt(formData.yearsInOperation),
-        annualRevenue: parseFloat(formData.annualRevenue),
-        numberOfEmployees: parseInt(formData.numberOfEmployees),
-        estimatedMonthlyVolume: formData.estimatedMonthlyVolume ? parseFloat(formData.estimatedMonthlyVolume) : null,
-        estimatedMonthlyTransactions: formData.estimatedMonthlyTransactions ? parseInt(formData.estimatedMonthlyTransactions) : null,
+        yearsInOperation: parseInt(businessFormData.yearsInOperation),
+        annualRevenue: parseFloat(businessFormData.annualRevenue),
+        numberOfEmployees: parseInt(businessFormData.numberOfEmployees),
+        estimatedMonthlyVolume: businessFormData.estimatedMonthlyVolume ? parseFloat(businessFormData.estimatedMonthlyVolume) : null,
+        estimatedMonthlyTransactions: businessFormData.estimatedMonthlyTransactions ? parseInt(businessFormData.estimatedMonthlyTransactions) : null,
         initialDeposit: 0
       };
 
-      const response = await fetch('/api/business/accounts/open', {
+      const response = await fetch(`${API_BASE}/api/business/accounts/open`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData)
@@ -182,7 +183,7 @@ const BusinessAccounts = () => {
 
       await fetchBusinessAccounts();
       setShowOpenAccountModal(false);
-      resetForm();
+      resetBusinessForm();
       setSuccess('Business account application submitted! A banker will review your application.');
       setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
@@ -192,8 +193,8 @@ const BusinessAccounts = () => {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
+  const resetBusinessForm = () => {
+    setBusinessFormData({
       businessName: '',
       ein: '',
       businessType: 'LLC',
@@ -250,7 +251,7 @@ const BusinessAccounts = () => {
       }
       
       const response = await fetch(
-        `/api/accounts/${accountId}/statements/export?year=${year}&month=${month}`
+        `${API_BASE}/api/accounts/${accountId}/statements/export?year=${year}&month=${month}`
       );
       
       if (!response.ok) throw new Error('Failed to download statement');
@@ -313,7 +314,7 @@ const BusinessAccounts = () => {
     }
   };
 
-  const getStatusBadge = (status, verified) => {
+  const getBusinessStatusBadge = (status, verified) => {
     if (status === 'APPROVED' && verified) {
       return { bg: 'bg-green-100', text: 'text-green-800', label: 'Approved', icon: CheckCircleIcon };
     } else if (status === 'APPROVED' && !verified) {
@@ -341,7 +342,7 @@ const BusinessAccounts = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Business Accounts</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Business Account Applications</h2>
           <p className="text-sm text-gray-500 mt-1">
             Apply for a business account - applications are reviewed by our bankers
           </p>
@@ -387,7 +388,7 @@ const BusinessAccounts = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {businessAccounts.map((account) => {
-            const status = getStatusBadge(account.status, account.verified);
+            const status = getBusinessStatusBadge(account.status, account.verified);
             const StatusIcon = status.icon;
             const isApproved = account.status === 'APPROVED' && account.verified;
             const isPending = account.status === 'PENDING';
@@ -569,7 +570,7 @@ const BusinessAccounts = () => {
                 <button
                   onClick={() => {
                     setShowOpenAccountModal(false);
-                    resetForm();
+                    resetBusinessForm();
                   }}
                   className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
                 >
@@ -580,7 +581,7 @@ const BusinessAccounts = () => {
 
             {/* Scrollable Form */}
             <div className="p-6 overflow-y-auto flex-1">
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleBusinessSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   {/* Business Name */}
                   <div className="col-span-2">
@@ -590,8 +591,8 @@ const BusinessAccounts = () => {
                     <input
                       type="text"
                       name="businessName"
-                      value={formData.businessName}
-                      onChange={handleInputChange}
+                      value={businessFormData.businessName}
+                      onChange={handleBusinessInputChange}
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                       required
                     />
@@ -605,8 +606,8 @@ const BusinessAccounts = () => {
                     <input
                       type="text"
                       name="ein"
-                      value={formData.ein}
-                      onChange={handleInputChange}
+                      value={businessFormData.ein}
+                      onChange={handleBusinessInputChange}
                       placeholder="XX-XXXXXXX"
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                       required
@@ -620,8 +621,8 @@ const BusinessAccounts = () => {
                     </label>
                     <select
                       name="businessType"
-                      value={formData.businessType}
-                      onChange={handleInputChange}
+                      value={businessFormData.businessType}
+                      onChange={handleBusinessInputChange}
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                       required
                     >
@@ -640,8 +641,8 @@ const BusinessAccounts = () => {
                     </label>
                     <select
                       name="industry"
-                      value={formData.industry}
-                      onChange={handleInputChange}
+                      value={businessFormData.industry}
+                      onChange={handleBusinessInputChange}
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                       required
                     >
@@ -660,8 +661,8 @@ const BusinessAccounts = () => {
                     </label>
                     <select
                       name="legalStructure"
-                      value={formData.legalStructure}
-                      onChange={handleInputChange}
+                      value={businessFormData.legalStructure}
+                      onChange={handleBusinessInputChange}
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                       required
                     >
@@ -681,8 +682,8 @@ const BusinessAccounts = () => {
                     <input
                       type="number"
                       name="yearsInOperation"
-                      value={formData.yearsInOperation}
-                      onChange={handleInputChange}
+                      value={businessFormData.yearsInOperation}
+                      onChange={handleBusinessInputChange}
                       min="0"
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                       required
@@ -697,8 +698,8 @@ const BusinessAccounts = () => {
                     <input
                       type="number"
                       name="annualRevenue"
-                      value={formData.annualRevenue}
-                      onChange={handleInputChange}
+                      value={businessFormData.annualRevenue}
+                      onChange={handleBusinessInputChange}
                       min="0"
                       step="1000"
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
@@ -714,8 +715,8 @@ const BusinessAccounts = () => {
                     <input
                       type="number"
                       name="numberOfEmployees"
-                      value={formData.numberOfEmployees}
-                      onChange={handleInputChange}
+                      value={businessFormData.numberOfEmployees}
+                      onChange={handleBusinessInputChange}
                       min="1"
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                       required
@@ -730,8 +731,8 @@ const BusinessAccounts = () => {
                     <input
                       type="number"
                       name="estimatedMonthlyVolume"
-                      value={formData.estimatedMonthlyVolume}
-                      onChange={handleInputChange}
+                      value={businessFormData.estimatedMonthlyVolume}
+                      onChange={handleBusinessInputChange}
                       min="0"
                       step="1000"
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
@@ -746,8 +747,8 @@ const BusinessAccounts = () => {
                     <input
                       type="number"
                       name="estimatedMonthlyTransactions"
-                      value={formData.estimatedMonthlyTransactions}
-                      onChange={handleInputChange}
+                      value={businessFormData.estimatedMonthlyTransactions}
+                      onChange={handleBusinessInputChange}
                       min="0"
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                     />
@@ -761,8 +762,8 @@ const BusinessAccounts = () => {
                     <input
                       type="text"
                       name="businessAddress"
-                      value={formData.businessAddress}
-                      onChange={handleInputChange}
+                      value={businessFormData.businessAddress}
+                      onChange={handleBusinessInputChange}
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                       required
                     />
@@ -772,8 +773,8 @@ const BusinessAccounts = () => {
                     <input
                       type="text"
                       name="businessAddress2"
-                      value={formData.businessAddress2}
-                      onChange={handleInputChange}
+                      value={businessFormData.businessAddress2}
+                      onChange={handleBusinessInputChange}
                       placeholder="Address Line 2 (Optional)"
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                     />
@@ -786,8 +787,8 @@ const BusinessAccounts = () => {
                     <input
                       type="text"
                       name="businessCity"
-                      value={formData.businessCity}
-                      onChange={handleInputChange}
+                      value={businessFormData.businessCity}
+                      onChange={handleBusinessInputChange}
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                       required
                     />
@@ -800,8 +801,8 @@ const BusinessAccounts = () => {
                     <input
                       type="text"
                       name="businessState"
-                      value={formData.businessState}
-                      onChange={handleInputChange}
+                      value={businessFormData.businessState}
+                      onChange={handleBusinessInputChange}
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                       required
                     />
@@ -814,8 +815,8 @@ const BusinessAccounts = () => {
                     <input
                       type="text"
                       name="businessZipCode"
-                      value={formData.businessZipCode}
-                      onChange={handleInputChange}
+                      value={businessFormData.businessZipCode}
+                      onChange={handleBusinessInputChange}
                       placeholder="12345"
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                       required
@@ -829,8 +830,8 @@ const BusinessAccounts = () => {
                     <input
                       type="text"
                       name="businessCountry"
-                      value={formData.businessCountry}
-                      onChange={handleInputChange}
+                      value={businessFormData.businessCountry}
+                      onChange={handleBusinessInputChange}
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                       required
                     />
@@ -844,8 +845,8 @@ const BusinessAccounts = () => {
                     <input
                       type="text"
                       name="businessPhone"
-                      value={formData.businessPhone}
-                      onChange={handleInputChange}
+                      value={businessFormData.businessPhone}
+                      onChange={handleBusinessInputChange}
                       placeholder="+1234567890"
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                     />
@@ -858,8 +859,8 @@ const BusinessAccounts = () => {
                     <input
                       type="email"
                       name="businessEmail"
-                      value={formData.businessEmail}
-                      onChange={handleInputChange}
+                      value={businessFormData.businessEmail}
+                      onChange={handleBusinessInputChange}
                       placeholder="business@example.com"
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                     />
@@ -872,8 +873,8 @@ const BusinessAccounts = () => {
                     <input
                       type="text"
                       name="website"
-                      value={formData.website}
-                      onChange={handleInputChange}
+                      value={businessFormData.website}
+                      onChange={handleBusinessInputChange}
                       placeholder="www.example.com"
                       className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-400"
                     />
@@ -885,8 +886,8 @@ const BusinessAccounts = () => {
                       <input
                         type="checkbox"
                         name="requestDebitCard"
-                        checked={formData.requestDebitCard}
-                        onChange={handleInputChange}
+                        checked={businessFormData.requestDebitCard}
+                        onChange={handleBusinessInputChange}
                         className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
                       />
                       <span className="ml-2 text-sm text-gray-600">
@@ -912,7 +913,7 @@ const BusinessAccounts = () => {
                     type="button"
                     onClick={() => {
                       setShowOpenAccountModal(false);
-                      resetForm();
+                      resetBusinessForm();
                     }}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm font-medium"
                   >
@@ -1054,4 +1055,4 @@ const BusinessAccounts = () => {
   );
 };
 
-export default BusinessAccounts;
+export default BusinessAccountApplications;

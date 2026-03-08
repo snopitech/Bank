@@ -25,7 +25,8 @@ const QuickActions = ({
   handleViewStatementsClick,
   checkingAccount,
   savingsAccount,
-  businessAccounts = []
+  businessAccounts = [],
+  creditAccounts = [] // Add this new prop
 }) => {
   // State for showing full account numbers (eye icon toggle)
   const [showFullNumbers, setShowFullNumbers] = useState({});
@@ -60,6 +61,13 @@ const QuickActions = ({
       bgLight: 'bg-purple-50',
       border: 'border-purple-200',
       text: 'text-purple-700'
+    },
+    CREDIT: { 
+      label: 'Credit', 
+      color: 'bg-blue-500',
+      bgLight: 'bg-blue-50',
+      border: 'border-blue-200',
+      text: 'text-blue-700'
     }
   };
 
@@ -95,6 +103,19 @@ const QuickActions = ({
       originalType: 'BUSINESS',
       originalId: biz.id,
       accountId: biz.accountId
+    })),
+
+    // Add all credit accounts
+    ...creditAccounts.map(credit => ({
+      id: `credit-${credit.id}`,
+      type: 'CREDIT',
+      accountNumber: credit.maskedAccountNumber || credit.accountNumber,
+      balance: credit.currentBalance,
+      nickname: 'Credit Card',
+      originalType: 'CREDIT',
+      originalId: credit.id,
+      creditLimit: credit.creditLimit,
+      availableCredit: credit.availableCredit
     }))
   ];
 
@@ -116,6 +137,22 @@ const QuickActions = ({
     const maskedLength = Math.max(5, account.accountNumber.length - 5);
     const maskedPart = '•'.repeat(maskedLength);
     return `${visiblePart} ${maskedPart}`;
+  };
+
+  const getAccountBalanceDisplay = (account) => {
+    if (account.type === 'CREDIT') {
+      return (
+        <div className="text-right">
+          <div className="font-bold text-gray-900">${account.balance?.toFixed(2) || '0.00'}</div>
+          <div className="text-xs text-gray-500">Limit: ${account.creditLimit?.toLocaleString()}</div>
+        </div>
+      );
+    }
+    return (
+      <div className="text-right">
+        <div className="font-bold text-gray-900">${account.balance?.toFixed(2) || '0.00'}</div>
+      </div>
+    );
   };
 
   return (
@@ -194,7 +231,7 @@ const QuickActions = ({
                 
                 <div className="px-3 py-2 text-xs text-gray-500 border-t mt-2">
                   <div className="flex justify-between">
-                    <span>Selected: {selectedAccount === "CHECKING" ? "Checking" : selectedAccount === "SAVINGS" ? "Savings" : "Business"}</span>
+                    <span>Selected: {selectedAccount === "CHECKING" ? "Checking" : selectedAccount === "SAVINGS" ? "Savings" : selectedAccount === "CREDIT" ? "Credit" : "Business"}</span>
                     <span>Fee: $0 for internal</span>
                   </div>
                 </div>
@@ -281,7 +318,7 @@ const QuickActions = ({
                 
                 <div className="px-3 py-2 text-xs text-gray-500 border-t mt-2">
                   <div className="flex justify-between">
-                    <span>From: {selectedAccount === "CHECKING" ? "Checking" : selectedAccount === "SAVINGS" ? "Savings" : "Business"}</span>
+                    <span>From: {selectedAccount === "CHECKING" ? "Checking" : selectedAccount === "SAVINGS" ? "Savings" : selectedAccount === "CREDIT" ? "Credit" : "Business"}</span>
                     <span>Schedule payments</span>
                   </div>
                 </div>
@@ -320,7 +357,7 @@ const QuickActions = ({
             )}
           </button>
 
-          {/* Dynamic Dropdown Menu - Shows ALL accounts */}
+          {/* Dynamic Dropdown Menu - Shows ALL accounts including credit */}
           {showStatementDropdown && (
             <div className="absolute top-full left-0 mt-2 w-full bg-white rounded-lg shadow-xl z-50 border border-gray-200 overflow-hidden min-w-[350px] max-h-[500px] overflow-y-auto">
               <div className="p-2">
@@ -329,7 +366,7 @@ const QuickActions = ({
                   📄 Download Statements
                 </div>
                 
-                {/* Dynamically render each account */}
+                {/* Dynamically render each account including credit */}
                 {allAccounts.map((account) => {
                   const config = accountTypeConfig[account.type];
                   const isExpanded = expandedAccountInDropdown === account.id;
@@ -362,12 +399,7 @@ const QuickActions = ({
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-gray-900">${account.balance?.toFixed(2) || '0.00'}</div>
-                          <div className="text-xs text-gray-500">
-                            {isExpanded ? '▲' : '▼'}
-                          </div>
-                        </div>
+                        {getAccountBalanceDisplay(account)}
                       </button>
                       
                       {isExpanded && (

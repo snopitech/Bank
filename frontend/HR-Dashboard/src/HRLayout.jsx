@@ -217,10 +217,13 @@ export default function HRLayout() {
   // UPDATED: Added Manage Users and improved labels
   const navItems = [
     { path: '/', icon: '📊', label: 'Dashboard' },
-    { path: '/users', icon: '👥', label: 'Manage Users' },        // New - for customer management
-    { path: '/employees', icon: '👔', label: 'Manage Employees' }, // Changed from 'Employees'
+    { path: '/users', icon: '👥', label: 'Manage Users' },      
+    { path: '/employees', icon: '👔', label: 'Manage Employees' }, 
     { path: '/employees/create', icon: '➕', label: 'Create Employee' },
+    { path: '/totp-reset', icon: '🔐', label: 'Reset TOTP' },        
+    { path: '/unlock-mfa', icon: '🔓', label: 'Unlock MFA' },        
     { path: '/reports', icon: '📈', label: 'Reports' },
+    { path: '/cleanup', icon: '🧹', label: 'Verification History Cleanup' }, // NEW
     { path: '/settings', icon: '⚙️', label: 'Settings' },
     { path: '/danger-zone', icon: '⚠️', label: 'Danger Zone' }
   ];

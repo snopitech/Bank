@@ -13,13 +13,13 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState([
     { label: 'Total Users', value: '0', change: '+12%', icon: '👥', color: '#3b82f6', path: '/users' },
     { label: 'Total Accounts', value: '0', change: '+8%', icon: '🏦', color: '#8b5cf6', path: '/total-accounts' },
-    { label: 'Applications', value: '12', change: 'pending', icon: '📋', color: '#eab308', path: '/applications' },
+    { label: 'Applications', value: '0', change: 'pending', icon: '📋', color: '#eab308', path: '/applications' },
     { label: 'Total Balance', value: '$0', change: '+5%', icon: '💰', color: '#22c55e', path: '/total-balance' },
     { label: 'Active Cards', value: '0', change: '+124', icon: '💳', color: '#ec4899', path: '/active-cards' },
-    { label: 'Alerts', value: '3', change: 'critical', icon: '⚠️', color: '#ef4444', path: '/alerts' } 
+    { label: 'Alerts', value: '0', change: 'critical', icon: '⚠️', color: '#ef4444', path: '/alerts' } 
   ]);
 
-  const [recentActivity] = useState([
+  const [recentActivity, setRecentActivity] = useState([
     { time: '10:30 AM', action: 'New user registered', user: 'john@email.com', type: 'user' },
     { time: '10:15 AM', action: '$50K transfer flagged', user: 'Account #1234', type: 'alert' },
     { time: '09:45 AM', action: 'Business account approved', user: 'Tech Startup LLC', type: 'success' },
@@ -27,7 +27,7 @@ const AdminDashboard = () => {
     { time: '08:50 AM', action: 'Support ticket created', user: '#8921', type: 'ticket' }
   ]);
 
-  const [pendingItems] = useState([
+  const [pendingItems, setPendingItems] = useState([
     { type: 'Business App', name: 'Agbonifo Enterprises', priority: 'high', time: '2h ago' },
     { type: 'Credit App', name: 'Michael A.', priority: 'medium', time: '3h ago' },
     { type: 'Claim', name: '#CL-2026-12', priority: 'high', time: '5h ago' },
@@ -89,6 +89,31 @@ const AdminDashboard = () => {
         }
       }
 
+      // Fetch pending applications count
+      let pendingApplicationsCount = 0;
+      try {
+        const applicationsResponse = await fetch(`${API_BASE}/api/admin/business/applications?status=PENDING`);
+        if (applicationsResponse.ok) {
+          const applicationsData = await applicationsResponse.json();
+          pendingApplicationsCount = applicationsData.length;
+        }
+      } catch (err) {
+        console.error('Error fetching applications:', err);
+      }
+
+      // Fetch unread alerts count for the current user
+      let alertsCount = 0;
+      if (user?.id) {
+        try {
+          const alertsResponse = await fetch(`${API_BASE}/api/alerts/user/${user.id}/unread/count`);
+          if (alertsResponse.ok) {
+            alertsCount = await alertsResponse.json();
+          }
+        } catch (err) {
+          console.error('Error fetching alerts count:', err);
+        }
+      }
+
       // Format balance
       const formattedBalance = new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -97,23 +122,83 @@ const AdminDashboard = () => {
         maximumFractionDigits: 0
       }).format(totalBalance);
 
-      // Format active cards count with commas
+      // Format numbers with commas
       const formattedActiveCards = new Intl.NumberFormat('en-US').format(activeCardsCount);
+      const formattedTotalAccounts = new Intl.NumberFormat('en-US').format(totalAccounts);
+      const formattedTotalUsers = new Intl.NumberFormat('en-US').format(usersData.length);
 
       // Update stats with live data
       setStats([
-        { label: 'Total Users', value: usersData.length.toString(), change: '+12%', icon: '👥', color: '#3b82f6', path: '/users' },
-        { label: 'Total Accounts', value: totalAccounts.toString(), change: '+8%', icon: '🏦', color: '#8b5cf6', path: '/total-accounts' },
-        { label: 'Applications', value: '12', change: 'pending', icon: '📋', color: '#eab308', path: '/applications' },
+        { label: 'Total Users', value: formattedTotalUsers, change: '+12%', icon: '👥', color: '#3b82f6', path: '/users' },
+        { label: 'Total Accounts', value: formattedTotalAccounts, change: '+8%', icon: '🏦', color: '#8b5cf6', path: '/total-accounts' },
+        { label: 'Applications', value: pendingApplicationsCount.toString(), change: 'pending', icon: '📋', color: '#eab308', path: '/applications' },
         { label: 'Total Balance', value: formattedBalance, change: '+5%', icon: '💰', color: '#22c55e', path: '/total-balance' },
         { label: 'Active Cards', value: formattedActiveCards, change: '+124', icon: '💳', color: '#ec4899', path: '/active-cards' },
-        { label: 'Alerts', value: '3', change: 'critical', icon: '⚠️', color: '#ef4444', path: '/alerts' } 
+        { label: 'Alerts', value: alertsCount.toString(), change: 'critical', icon: '⚠️', color: '#ef4444', path: '/alerts' } 
       ]);
+
+      // Update pending items with real data if available
+      if (pendingApplicationsCount > 0) {
+        setPendingItems([
+          { 
+            type: 'Business App', 
+            name: `${pendingApplicationsCount} Pending`, 
+            priority: 'high', 
+            time: 'Now' 
+          },
+          ...pendingItems.slice(1)
+        ]);
+      }
+
+      // Fetch recent alerts for activity
+      if (user?.id) {
+        try {
+          const recentAlertsResponse = await fetch(`${API_BASE}/api/alerts/user/${user.id}?limit=3`);
+          if (recentAlertsResponse.ok) {
+            const recentAlerts = await recentAlertsResponse.json();
+            
+            // Convert alerts to activity format
+            const alertActivities = recentAlerts.slice(0, 2).map(alert => ({
+              time: formatTimeAgo(alert.timestamp),
+              action: alert.title,
+              user: alert.type,
+              type: alert.priority === 'HIGH' ? 'alert' : 'warning'
+            }));
+            
+            // Merge with existing activity (keeping first few items)
+            setRecentActivity(prev => [
+              ...alertActivities,
+              ...prev.slice(alertActivities.length)
+            ]);
+          }
+        } catch (err) {
+          console.error('Error fetching recent alerts:', err);
+        }
+      }
 
     } catch (error) {
       console.error('Error fetching live data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const formatTimeAgo = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) {
+      return diffMins === 0 ? 'Just now' : `${diffMins}m ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours}h ago`;
+    } else if (diffDays < 7) {
+      return `${diffDays}d ago`;
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
   };
 
@@ -367,7 +452,7 @@ const AdminDashboard = () => {
             </div>
             <div style={{...styles.dropdownItem}} onClick={() => { setDropdownOpen(false); navigate('/alerts'); }}>
               <span>🔔</span> Alerts
-              <span style={{marginLeft: 'auto', background: '#ef4444', color: 'white', padding: '2px 6px', borderRadius: '12px', fontSize: '10px'}}>3</span>
+              <span style={{marginLeft: 'auto', background: '#ef4444', color: 'white', padding: '2px 6px', borderRadius: '12px', fontSize: '10px'}}>{stats[5].value}</span>
             </div>
             <div style={{...styles.dropdownItem}} onClick={() => { setDropdownOpen(false); navigate('/messages'); }}>
               <span>✉️</span> Messages
@@ -381,7 +466,7 @@ const AdminDashboard = () => {
         )}
       </div>
 
-      {/* Stats Grid - Now with live card data */}
+      {/* Stats Grid - Now with live alerts count */}
       <div style={styles.statsGrid}>
         {stats.map((stat, index) => (
           <div 
@@ -415,15 +500,7 @@ const AdminDashboard = () => {
       <div style={styles.quickActions}>
         <h3 style={styles.sectionTitle}>Quick Actions</h3>
         <div style={styles.buttonGrid}>
-          <button 
-            style={styles.button}
-            onClick={() => navigate('/applications')}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#5a67d8'}
-            onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
-          >
-            📋 Review Applications
-          </button>
-         
+                
           <button 
             style={styles.button}
             onClick={() => navigate('/open-account')}
@@ -433,7 +510,6 @@ const AdminDashboard = () => {
             🏦 Open New Account
           </button>
          
-
           <button 
             style={styles.button}
             onClick={() => navigate('/update-limits')}
@@ -524,19 +600,44 @@ const AdminDashboard = () => {
             onMouseEnter={(e) => e.currentTarget.style.background = '#5a67d8'}
             onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
           >
-             🏢 Business Apps
+             🏢 Business Account Application
           </button>
-        
+           <button 
+            style={styles.button}
+            onClick={() => navigate('/credit-applications')}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#5a67d8'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
+            >
+            💳 Credit Account Applications
+            </button>
+
+             <button 
+             style={styles.button}
+             onClick={() => navigate('/admin/loan-applications')}
+             onMouseEnter={(e) => e.currentTarget.style.background = '#5a67d8'}
+             onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
+             >
+             💰 Loan Applications
+           </button>
+
            <button 
             style={styles.button}
             onClick={() => navigate('/admin/users')}
             onMouseEnter={(e) => e.currentTarget.style.background = '#5a67d8'}
             onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
-          >
+            >
             👥 Manage Users
           </button>
+           
+          <button 
+          style={styles.button}
+          onClick={() => navigate('/admin/loan-applications')}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#5a67d8'}
+          onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
+          >
+          💰 Loan Applications
+          </button>
 
-          {/* Quick link to Active Cards page (will create later) */}
           <button 
             style={styles.button}
             onClick={() => navigate('/active-cards')}
@@ -545,6 +646,47 @@ const AdminDashboard = () => {
           >
             💳 Manage Cards
           </button>
+
+          <button 
+          style={styles.button}
+          onClick={() => navigate('/admin/unlock-user')}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#5a67d8'}
+          onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
+          >
+          🔓 Unlock User Account      
+
+          </button>
+
+  <button 
+  style={styles.button}
+  onClick={() => navigate('/admin/us-verifications')}
+  onMouseEnter={(e) => e.currentTarget.style.background = '#5a67d8'}
+  onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
+>
+  US Citizen's Verifications
+</button>
+
+
+<button 
+  style={styles.button}
+  onClick={() => navigate('/admin/non-us-verifications')}
+  onMouseEnter={(e) => e.currentTarget.style.background = '#5a67d8'}
+  onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
+>
+  🌍 Non-US Citizen Verification
+</button>
+
+          {/* Add TOTP Setup Button - Only visible for employees */}
+          {user && (  // Show for any logged-in user
+            <button 
+              style={styles.button}
+              onClick={() => navigate('/admin/totp-setup')}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#5a67d8'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
+            >
+              🔐 Setup Two-Factor Auth
+            </button>
+          )}
 
         </div>
       </div>

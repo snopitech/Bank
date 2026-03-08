@@ -19,6 +19,31 @@ public class Employee {
     @Column(nullable = false)
     private String lastName;
 
+    // TOTP Fields (using Boolean objects to allow null values from database)
+    @Column(name = "totp_secret")
+    private String totpSecret;
+
+    @Column(name = "totp_enabled")
+    private Boolean totpEnabled = false;
+
+    @Column(name = "totp_setup_completed")
+    private Boolean totpSetupCompleted = false;
+
+    @Column(name = "login_count")
+    private Integer loginCount = 0;
+
+    @Column(name = "totp_enforcement_date")
+    private LocalDateTime totpEnforcementDate;
+
+     @Column(name = "hr_failed_attempts")
+     private Integer hrFailedAttempts = 0;
+
+     @Column(name = "hr_account_locked")
+     private Boolean hrAccountLocked = false;
+
+     @Column(name = "hr_lock_expiry")
+     private LocalDateTime hrLockExpiry;
+
     @Column(nullable = false, unique = true)
     private String email; // Company email (e.g., john.doe@snopitech.com)
 
@@ -415,6 +440,31 @@ public class Employee {
         this.approvalTokenExpiry = approvalTokenExpiry;
     }
 
+    // ===== TOTP GETTERS AND SETTERS (UPDATED) =====
+    public String getTotpSecret() {
+        return totpSecret;
+    }
+
+    public void setTotpSecret(String totpSecret) {
+        this.totpSecret = totpSecret;
+    }
+
+    public Boolean getTotpEnabled() {
+        return totpEnabled;
+    }
+
+    public void setTotpEnabled(Boolean totpEnabled) {
+        this.totpEnabled = totpEnabled;
+    }
+
+    public Boolean getTotpSetupCompleted() {
+        return totpSetupCompleted;
+    }
+
+    public void setTotpSetupCompleted(Boolean totpSetupCompleted) {
+        this.totpSetupCompleted = totpSetupCompleted;
+    }
+
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
@@ -441,4 +491,74 @@ public class Employee {
     public boolean isRejected() {
         return "REJECTED".equals(status);
     }
+    public Integer getLoginCount() {
+    return loginCount;
+    }  
+    public Integer getHrFailedAttempts() {
+    return hrFailedAttempts;
+}
+
+public void setHrFailedAttempts(Integer hrFailedAttempts) {
+    this.hrFailedAttempts = hrFailedAttempts;
+}
+
+public Boolean getHrAccountLocked() {
+    return hrAccountLocked;
+}
+
+public void setHrAccountLocked(Boolean hrAccountLocked) {
+    this.hrAccountLocked = hrAccountLocked;
+}
+
+public LocalDateTime getHrLockExpiry() {
+    return hrLockExpiry;
+}
+
+public void setHrLockExpiry(LocalDateTime hrLockExpiry) {
+    this.hrLockExpiry = hrLockExpiry;
+}  
+
+// Add these methods to check lock status
+public boolean isHrLocked() {
+    if (hrAccountLocked == null || !hrAccountLocked) return false;
+    if (hrLockExpiry != null && hrLockExpiry.isBefore(LocalDateTime.now())) {
+        // Lock expired, auto-unlock
+        this.hrAccountLocked = false;
+        this.hrLockExpiry = null;
+        return false;
+    }
+    return true;
+}
+
+public void incrementHrFailedAttempts() {
+    if (this.hrFailedAttempts == null) {
+        this.hrFailedAttempts = 1;
+    } else {
+        this.hrFailedAttempts++;
+    }
+}
+
+public void resetHrFailedAttempts() {
+    this.hrFailedAttempts = 0;
+    this.hrAccountLocked = false;
+    this.hrLockExpiry = null;
+}
+
+public void lockHrAccount() {
+    this.hrAccountLocked = true;
+    this.hrLockExpiry = LocalDateTime.now().plusMinutes(30);
+}
+
+public void setLoginCount(Integer loginCount) {
+    this.loginCount = loginCount;
+}
+
+public LocalDateTime getTotpEnforcementDate() {
+    return totpEnforcementDate;
+}
+
+public void setTotpEnforcementDate(LocalDateTime totpEnforcementDate) {
+    this.totpEnforcementDate = totpEnforcementDate;
+}
+    
 }

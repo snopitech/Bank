@@ -13,10 +13,97 @@ export default function AdminBusinessApplications() {
   const [rejectReason, setRejectReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [filter, setFilter] = useState('PENDING'); // PENDING, APPROVED, REJECTED, ALL
+  
+  // ⭐ NEW SEARCH STATES
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [userStats, setUserStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 });
 
   useEffect(() => {
+    if (selectedUser) {
+      fetchUserApplications(selectedUser.id);
+    } else {
+      fetchApplications();
+    }
+  }, [filter, selectedUser]);
+
+  // ⭐ NEW: Search users by name
+  const searchUsers = async (term) => {
+    if (!term.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      // You'll need to create this endpoint: GET /api/users/search?name=term
+      const response = await fetch(`${API_BASE}/api/users/search?name=${encodeURIComponent(term)}`);
+      if (!response.ok) throw new Error('Search failed');
+      const data = await response.json();
+      setSearchResults(data);
+      setShowSearchDropdown(true);
+    } catch (error) {
+      console.error('Error searching users:', error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // ⭐ NEW: Handle search input change
+  const handleSearchChange = (e) => {
+    const term = e.target.value;
+    setSearchTerm(term);
+    searchUsers(term);
+  };
+
+  // ⭐ NEW: Select a user from search results
+  const selectUser = (user) => {
+    setSelectedUser(user);
+    setSearchTerm(`${user.firstName} ${user.lastName}`);
+    setShowSearchDropdown(false);
+    fetchUserApplications(user.id);
+  };
+
+  // ⭐ NEW: Fetch applications for specific user
+  const fetchUserApplications = async (userId) => {
+    setLoading(true);
+    try {
+      let url = `${API_BASE}/api/admin/business/applications/user/${userId}`;
+      if (filter !== 'ALL') {
+        url += `?status=${filter}`;
+      }
+      
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch user applications');
+      const data = await response.json();
+      setApplications(data);
+      
+      // Calculate user stats
+      const stats = {
+        total: data.length,
+        pending: data.filter(a => a.status === 'PENDING').length,
+        approved: data.filter(a => a.status === 'APPROVED').length,
+        rejected: data.filter(a => a.status === 'REJECTED').length
+      };
+      setUserStats(stats);
+    } catch (error) {
+      console.error('Error fetching user applications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ⭐ NEW: Clear user filter
+  const clearUserFilter = () => {
+    setSelectedUser(null);
+    setSearchTerm('');
+    setSearchResults([]);
+    setUserStats({ total: 0, pending: 0, approved: 0, rejected: 0 });
     fetchApplications();
-  }, [filter]);
+  };
 
   const fetchApplications = async () => {
     setLoading(true);
@@ -57,8 +144,12 @@ export default function AdminBusinessApplications() {
         throw new Error(error.error || 'Failed to approve application');
       }
 
-      // Refresh list and close modal
-      await fetchApplications();
+      // Refresh list
+      if (selectedUser) {
+        await fetchUserApplications(selectedUser.id);
+      } else {
+        await fetchApplications();
+      }
       setShowDetailsModal(false);
       setSelectedApp(null);
       
@@ -85,8 +176,12 @@ export default function AdminBusinessApplications() {
         throw new Error(error.error || 'Failed to reject application');
       }
 
-      // Refresh list and close modals
-      await fetchApplications();
+      // Refresh list
+      if (selectedUser) {
+        await fetchUserApplications(selectedUser.id);
+      } else {
+        await fetchApplications();
+      }
       setShowRejectModal(false);
       setShowDetailsModal(false);
       setSelectedApp(null);
@@ -159,6 +254,106 @@ export default function AdminBusinessApplications() {
       alignItems: 'center',
       gap: '8px'
     },
+    // ⭐ NEW STYLES FOR SEARCH
+    searchSection: {
+      marginBottom: '20px',
+      position: 'relative'
+    },
+    searchContainer: {
+      position: 'relative',
+      marginBottom: '15px'
+    },
+    searchInput: {
+      width: '100%',
+      padding: '12px 16px',
+      paddingRight: '40px',
+      border: '1px solid #e0e0e0',
+      borderRadius: '8px',
+      fontSize: '14px',
+      outline: 'none',
+      transition: 'border-color 0.2s'
+    },
+    searchIcon: {
+      position: 'absolute',
+      right: '12px',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      color: '#999'
+    },
+    searchDropdown: {
+      position: 'absolute',
+      top: '100%',
+      left: 0,
+      right: 0,
+      maxHeight: '300px',
+      overflowY: 'auto',
+      background: 'white',
+      border: '1px solid #e0e0e0',
+      borderRadius: '8px',
+      marginTop: '4px',
+      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+      zIndex: 1000
+    },
+    searchResultItem: {
+      padding: '12px 16px',
+      cursor: 'pointer',
+      borderBottom: '1px solid #f0f0f0',
+      transition: 'background 0.2s'
+    },
+    searchResultName: {
+      fontWeight: '500',
+      color: '#333'
+    },
+    searchResultEmail: {
+      fontSize: '12px',
+      color: '#666',
+      marginTop: '2px'
+    },
+    userInfoCard: {
+      background: '#f8f9fa',
+      borderRadius: '8px',
+      padding: '16px',
+      marginBottom: '20px',
+      border: '1px solid #e0e0e0'
+    },
+    userInfoHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '12px'
+    },
+    userName: {
+      fontSize: '18px',
+      fontWeight: 'bold',
+      color: '#333',
+      margin: 0
+    },
+    clearButton: {
+      background: 'none',
+      border: '1px solid #e0e0e0',
+      padding: '6px 12px',
+      borderRadius: '6px',
+      fontSize: '12px',
+      cursor: 'pointer',
+      color: '#666'
+    },
+    userInfoGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+      gap: '12px'
+    },
+    userInfoItem: {
+      fontSize: '14px'
+    },
+    userInfoLabel: {
+      color: '#666',
+      marginBottom: '4px'
+    },
+    userInfoValue: {
+      fontWeight: '500',
+      color: '#333'
+    },
+    // ⭐ END NEW STYLES
     filterContainer: {
       display: 'flex',
       gap: '8px'
@@ -350,6 +545,84 @@ export default function AdminBusinessApplications() {
         >
           ← Back to Dashboard
         </button>
+      </div>
+
+      {/* ⭐ NEW: Search Section */}
+      <div style={styles.searchSection}>
+        <div style={styles.searchContainer}>
+          <input
+            type="text"
+            placeholder="Search users by name..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            onFocus={() => searchResults.length > 0 && setShowSearchDropdown(true)}
+            style={styles.searchInput}
+          />
+          <span style={styles.searchIcon}>
+            {searchLoading ? '⋯' : '🔍'}
+          </span>
+          
+          {/* Search Results Dropdown */}
+          {showSearchDropdown && searchResults.length > 0 && (
+            <div style={styles.searchDropdown}>
+              {searchResults.map(user => (
+                <div
+                  key={user.id}
+                  style={styles.searchResultItem}
+                  onClick={() => selectUser(user)}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                >
+                  <div style={styles.searchResultName}>
+                    {user.firstName} {user.lastName}
+                  </div>
+                  <div style={styles.searchResultEmail}>{user.email}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Selected User Info Card */}
+        {selectedUser && (
+          <div style={styles.userInfoCard}>
+            <div style={styles.userInfoHeader}>
+              <h3 style={styles.userName}>{selectedUser.firstName} {selectedUser.lastName}</h3>
+              <button
+                style={styles.clearButton}
+                onClick={clearUserFilter}
+              >
+                Clear Filter
+              </button>
+            </div>
+            <div style={styles.userInfoGrid}>
+              <div style={styles.userInfoItem}>
+                <div style={styles.userInfoLabel}>Email</div>
+                <div style={styles.userInfoValue}>{selectedUser.email}</div>
+              </div>
+              <div style={styles.userInfoItem}>
+                <div style={styles.userInfoLabel}>Phone</div>
+                <div style={styles.userInfoValue}>{selectedUser.phone || 'N/A'}</div>
+              </div>
+              <div style={styles.userInfoItem}>
+                <div style={styles.userInfoLabel}>Member Since</div>
+                <div style={styles.userInfoValue}>{formatDate(selectedUser.memberSince)}</div>
+              </div>
+              <div style={styles.userInfoItem}>
+                <div style={styles.userInfoLabel}>Total Applications</div>
+                <div style={styles.userInfoValue}>{userStats.total}</div>
+              </div>
+              <div style={styles.userInfoItem}>
+                <div style={styles.userInfoLabel}>Approved</div>
+                <div style={{...styles.userInfoValue, color: '#22c55e'}}>{userStats.approved}</div>
+              </div>
+              <div style={styles.userInfoItem}>
+                <div style={styles.userInfoLabel}>Rejected</div>
+                <div style={{...styles.userInfoValue, color: '#ef4444'}}>{userStats.rejected}</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filter Buttons */}

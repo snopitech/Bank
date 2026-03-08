@@ -1,96 +1,67 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+const API_BASE = "http://localhost:8080";
 
 const AdminApplications = () => {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [applications, setApplications] = useState([]);
+  const [filter, setFilter] = useState('PENDING');
   const [selectedApp, setSelectedApp] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const [applications] = useState([
-    { 
-      id: 1, 
-      type: 'Business', 
-      businessName: 'Agbonifo Enterprises LLC', 
-      applicant: 'Michael Agbonifo',
-      email: 'michael@snopitech.com',
-      ein: '12-3456789',
-      businessType: 'LLC',
-      industry: 'Technology',
-      annualRevenue: '$500,000',
-      submitted: '2026-02-17',
-      status: 'pending',
-      priority: 'high'
-    },
-    { 
-      id: 2, 
-      type: 'Credit', 
-      businessName: 'Michael A.', 
-      applicant: 'Michael Agbonifo',
-      email: 'michael@snopitech.com',
-      requestedLimit: '$5,000',
-      creditScore: '720',
-      annualIncome: '$125,000',
-      submitted: '2026-02-16',
-      status: 'pending',
-      priority: 'medium'
-    },
-    { 
-      id: 3, 
-      type: 'Business', 
-      businessName: 'Tech Startup LLC', 
-      applicant: 'Cynthia Ekeh',
-      email: 'cynthia@email.com',
-      ein: '98-7654321',
-      businessType: 'LLC',
-      industry: 'Software',
-      annualRevenue: '$250,000',
-      submitted: '2026-02-15',
-      status: 'approved',
-      priority: 'low'
-    },
-    { 
-      id: 4, 
-      type: 'Credit', 
-      businessName: 'Tracy A.', 
-      applicant: 'Tracy Agbonifo',
-      email: 'tracy@email.com',
-      requestedLimit: '$10,000',
-      creditScore: '680',
-      annualIncome: '$95,000',
-      submitted: '2026-02-14',
-      status: 'rejected',
-      priority: 'low'
-    },
-    { 
-      id: 5, 
-      type: 'Business', 
-      businessName: 'Global Trading Inc', 
-      applicant: 'Bose Agbonifo',
-      email: 'bose@email.com',
-      ein: '45-6789123',
-      businessType: 'Corporation',
-      industry: 'Retail',
-      annualRevenue: '$1,200,000',
-      submitted: '2026-02-13',
-      status: 'pending',
-      priority: 'high'
+  // Fetch applications on component mount and when filter changes
+  useEffect(() => {
+    fetchApplications();
+  }, [filter]);
+
+  const fetchApplications = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      let url = `${API_BASE}/api/admin/business/applications`;
+      if (filter !== 'ALL') {
+        url += `?status=${filter}`;
+      }
+      
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch applications');
+      const data = await response.json();
+      setApplications(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
-  const filteredApps = applications.filter(app => {
-    if (filter === 'all') return true;
-    if (filter === 'pending') return app.status === 'pending';
-    if (filter === 'approved') return app.status === 'approved';
-    if (filter === 'rejected') return app.status === 'rejected';
-    return app.type.toLowerCase() === filter;
-  });
+  const handleApprove = async (app) => {
+    if (!window.confirm(`Approve business application for ${app.businessName}?`)) return;
+    
+    setActionLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/business/applications/${app.id}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approvedBy: 'Admin' })
+      });
 
-  const handleApprove = (app) => {
-    if (window.confirm(`Approve ${app.type} application for ${app.businessName}?`)) {
-      alert(`✅ Application approved! Email sent to ${app.email}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to approve application');
+      }
+
+      alert(`✅ Business account approved! Email sent to ${app.businessEmail}`);
+      fetchApplications(); // Refresh the list
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -99,34 +70,71 @@ const AdminApplications = () => {
     setShowRejectModal(true);
   };
 
-  const submitRejection = () => {
+  const submitRejection = async () => {
     if (!rejectReason.trim()) {
       alert('Please provide a reason for rejection');
       return;
     }
-    alert(`❌ Application rejected. Reason: ${rejectReason}\nEmail sent to ${selectedApp.email}`);
-    setShowRejectModal(false);
-    setSelectedApp(null);
-    setRejectReason('');
+
+    setActionLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/business/applications/${selectedApp.id}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          reason: rejectReason,
+          rejectedBy: 'Admin'
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reject application');
+      }
+
+      alert(`❌ Application rejected. Reason: ${rejectReason}\nEmail sent to ${selectedApp.businessEmail}`);
+      setShowRejectModal(false);
+      setSelectedApp(null);
+      setRejectReason('');
+      fetchApplications(); // Refresh the list
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const getStatusColor = (status) => {
     switch(status) {
-      case 'pending': return '#eab308';
-      case 'approved': return '#22c55e';
-      case 'rejected': return '#ef4444';
+      case 'PENDING': return '#eab308';
+      case 'APPROVED': return '#22c55e';
+      case 'REJECTED': return '#ef4444';
       default: return '#6b7280';
     }
   };
 
-  const getPriorityColor = (priority) => {
-    switch(priority) {
-      case 'high': return '#ef4444';
-      case 'medium': return '#eab308';
-      case 'low': return '#22c55e';
-      default: return '#6b7280';
-    }
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
   };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Calculate stats
+  const pendingCount = applications.filter(a => a.status === 'PENDING').length;
+  const approvedCount = applications.filter(a => a.status === 'APPROVED').length;
+  const rejectedCount = applications.filter(a => a.status === 'REJECTED').length;
 
   const styles = {
     container: {
@@ -215,7 +223,7 @@ const AdminApplications = () => {
     },
     tableHeader: {
       display: 'grid',
-      gridTemplateColumns: '0.5fr 1fr 1.5fr 1fr 1fr 1fr 1.5fr',
+      gridTemplateColumns: '0.5fr 1.5fr 1fr 1fr 1fr 1fr 1.5fr',
       padding: '15px',
       background: '#f8fafc',
       borderRadius: '8px',
@@ -225,7 +233,7 @@ const AdminApplications = () => {
     },
     tableRow: {
       display: 'grid',
-      gridTemplateColumns: '0.5fr 1fr 1.5fr 1fr 1fr 1fr 1.5fr',
+      gridTemplateColumns: '0.5fr 1.5fr 1fr 1fr 1fr 1fr 1.5fr',
       padding: '15px',
       borderBottom: '1px solid #f0f0f0',
       alignItems: 'center'
@@ -238,15 +246,6 @@ const AdminApplications = () => {
       textAlign: 'center',
       display: 'inline-block',
       width: '80px'
-    },
-    priorityBadge: {
-      padding: '4px 8px',
-      borderRadius: '4px',
-      fontSize: '11px',
-      fontWeight: '600',
-      textTransform: 'uppercase',
-      width: '60px',
-      textAlign: 'center'
     },
     actionButton: {
       background: '#667eea',
@@ -311,7 +310,7 @@ const AdminApplications = () => {
       borderBottom: '1px solid #f0f0f0'
     },
     detailLabel: {
-      width: '120px',
+      width: '140px',
       color: '#666',
       fontSize: '14px'
     },
@@ -333,18 +332,61 @@ const AdminApplications = () => {
       display: 'flex',
       gap: '12px',
       justifyContent: 'flex-end'
+    },
+    loadingContainer: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      color: 'white'
+    },
+    errorContainer: {
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      color: 'white'
+    },
+    retryButton: {
+      background: 'white',
+      color: '#667eea',
+      border: 'none',
+      padding: '10px 20px',
+      borderRadius: '8px',
+      fontSize: '14px',
+      cursor: 'pointer',
+      marginTop: '20px'
     }
   };
 
-  const pendingCount = applications.filter(a => a.status === 'pending').length;
-  const businessCount = applications.filter(a => a.type === 'Business').length;
-  const creditCount = applications.filter(a => a.type === 'Credit').length;
+  if (loading) {
+    return (
+      <div style={styles.loadingContainer}>
+        <div>Loading applications...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={styles.errorContainer}>
+        <h2>Error Loading Applications</h2>
+        <p>{error}</p>
+        <button style={styles.retryButton} onClick={fetchApplications}>
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
       {/* Header */}
       <div style={styles.header}>
-        <h1 style={styles.headerTitle}>Applications Management</h1>
+        <h1 style={styles.headerTitle}>Business Applications Management</h1>
         <button style={styles.backButton} onClick={() => navigate('/dashboard')}>
           ← Back to Dashboard
         </button>
@@ -361,52 +403,40 @@ const AdminApplications = () => {
           <div style={styles.statValue}>{pendingCount}</div>
         </div>
         <div style={styles.statCard}>
-          <div style={styles.statLabel}>Business Apps</div>
-          <div style={styles.statValue}>{businessCount}</div>
+          <div style={styles.statLabel}>Approved</div>
+          <div style={styles.statValue}>{approvedCount}</div>
         </div>
         <div style={styles.statCard}>
-          <div style={styles.statLabel}>Credit Apps</div>
-          <div style={styles.statValue}>{creditCount}</div>
+          <div style={styles.statLabel}>Rejected</div>
+          <div style={styles.statValue}>{rejectedCount}</div>
         </div>
       </div>
 
       {/* Filters */}
       <div style={styles.filters}>
         <button 
-          style={{...styles.filterButton, ...(filter === 'all' ? styles.activeFilter : {})}}
-          onClick={() => setFilter('all')}
-        >
-          All
-        </button>
-        <button 
-          style={{...styles.filterButton, ...(filter === 'pending' ? styles.activeFilter : {})}}
-          onClick={() => setFilter('pending')}
+          style={{...styles.filterButton, ...(filter === 'PENDING' ? styles.activeFilter : {})}}
+          onClick={() => setFilter('PENDING')}
         >
           Pending
         </button>
         <button 
-          style={{...styles.filterButton, ...(filter === 'approved' ? styles.activeFilter : {})}}
-          onClick={() => setFilter('approved')}
+          style={{...styles.filterButton, ...(filter === 'APPROVED' ? styles.activeFilter : {})}}
+          onClick={() => setFilter('APPROVED')}
         >
           Approved
         </button>
         <button 
-          style={{...styles.filterButton, ...(filter === 'rejected' ? styles.activeFilter : {})}}
-          onClick={() => setFilter('rejected')}
+          style={{...styles.filterButton, ...(filter === 'REJECTED' ? styles.activeFilter : {})}}
+          onClick={() => setFilter('REJECTED')}
         >
           Rejected
         </button>
         <button 
-          style={{...styles.filterButton, ...(filter === 'business' ? styles.activeFilter : {})}}
-          onClick={() => setFilter('business')}
+          style={{...styles.filterButton, ...(filter === 'ALL' ? styles.activeFilter : {})}}
+          onClick={() => setFilter('ALL')}
         >
-          Business
-        </button>
-        <button 
-          style={{...styles.filterButton, ...(filter === 'credit' ? styles.activeFilter : {})}}
-          onClick={() => setFilter('credit')}
-        >
-          Credit
+          All
         </button>
       </div>
 
@@ -414,73 +444,62 @@ const AdminApplications = () => {
       <div style={styles.table}>
         <div style={styles.tableHeader}>
           <div>ID</div>
+          <div>Business Name</div>
+          <div>Owner</div>
           <div>Type</div>
-          <div>Business/Applicant</div>
           <div>Submitted</div>
-          <div>Priority</div>
           <div>Status</div>
           <div>Actions</div>
         </div>
         
-        {filteredApps.map((app) => (
-          <div key={app.id} style={styles.tableRow}>
-            <div>#{app.id}</div>
-            <div>
-              <span style={{
-                padding: '4px 8px',
-                borderRadius: '4px',
-                background: app.type === 'Business' ? '#3b82f620' : '#8b5cf620',
-                color: app.type === 'Business' ? '#3b82f6' : '#8b5cf6'
-              }}>
-                {app.type}
-              </span>
-            </div>
-            <div>
+        {applications.length > 0 ? (
+          applications.map((app) => (
+            <div key={app.id} style={styles.tableRow}>
+              <div>#{app.id}</div>
               <div style={{fontWeight: '500'}}>{app.businessName}</div>
-              <div style={{color: '#666', fontSize: '12px'}}>{app.applicant}</div>
+              <div>
+                <div>{app.ownerName || 'N/A'}</div>
+                <div style={{color: '#666', fontSize: '12px'}}>{app.businessEmail}</div>
+              </div>
+              <div>{app.businessType}</div>
+              <div>{formatDate(app.createdDate)}</div>
+              <div>
+                <span style={{...styles.statusBadge, background: `${getStatusColor(app.status)}20`, color: getStatusColor(app.status)}}>
+                  {app.status}
+                </span>
+              </div>
+              <div>
+                <button 
+                  style={styles.actionButton}
+                  onClick={() => {
+                    setSelectedApp(app);
+                    setShowDetails(true);
+                  }}
+                >
+                  View
+                </button>
+                {app.status === 'PENDING' && (
+                  <>
+                    <button 
+                      style={styles.approveButton}
+                      onClick={() => handleApprove(app)}
+                      disabled={actionLoading}
+                    >
+                      ✓
+                    </button>
+                    <button 
+                      style={styles.rejectButton}
+                      onClick={() => handleReject(app)}
+                      disabled={actionLoading}
+                    >
+                      ✗
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-            <div>{app.submitted}</div>
-            <div>
-              <span style={{...styles.priorityBadge, background: `${getPriorityColor(app.priority)}20`, color: getPriorityColor(app.priority)}}>
-                {app.priority}
-              </span>
-            </div>
-            <div>
-              <span style={{...styles.statusBadge, background: `${getStatusColor(app.status)}20`, color: getStatusColor(app.status)}}>
-                {app.status}
-              </span>
-            </div>
-            <div>
-              <button 
-                style={styles.actionButton}
-                onClick={() => {
-                  setSelectedApp(app);
-                  setShowDetails(true);
-                }}
-              >
-                View
-              </button>
-              {app.status === 'pending' && (
-                <>
-                  <button 
-                    style={styles.approveButton}
-                    onClick={() => handleApprove(app)}
-                  >
-                    ✓
-                  </button>
-                  <button 
-                    style={styles.rejectButton}
-                    onClick={() => handleReject(app)}
-                  >
-                    ✗
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        ))}
-
-        {filteredApps.length === 0 && (
+          ))
+        ) : (
           <div style={{textAlign: 'center', padding: '40px', color: '#999'}}>
             No applications found matching your criteria
           </div>
@@ -491,70 +510,59 @@ const AdminApplications = () => {
       {showDetails && selectedApp && (
         <div style={styles.modal} onClick={() => setShowDetails(false)}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={styles.modalTitle}>Application Details</h2>
+            <h2 style={styles.modalTitle}>Business Application Details</h2>
             
             <div style={styles.detailRow}>
               <div style={styles.detailLabel}>Application ID:</div>
               <div style={styles.detailValue}>#{selectedApp.id}</div>
             </div>
             <div style={styles.detailRow}>
-              <div style={styles.detailLabel}>Type:</div>
-              <div style={styles.detailValue}>{selectedApp.type}</div>
-            </div>
-            <div style={styles.detailRow}>
               <div style={styles.detailLabel}>Business Name:</div>
               <div style={styles.detailValue}>{selectedApp.businessName}</div>
             </div>
             <div style={styles.detailRow}>
-              <div style={styles.detailLabel}>Applicant:</div>
-              <div style={styles.detailValue}>{selectedApp.applicant}</div>
+              <div style={styles.detailLabel}>Owner:</div>
+              <div style={styles.detailValue}>{selectedApp.ownerName || selectedApp.applicant || 'N/A'}</div>
             </div>
             <div style={styles.detailRow}>
               <div style={styles.detailLabel}>Email:</div>
-              <div style={styles.detailValue}>{selectedApp.email}</div>
+              <div style={styles.detailValue}>{selectedApp.businessEmail || selectedApp.email}</div>
             </div>
-            
-            {selectedApp.type === 'Business' && (
-              <>
-                <div style={styles.detailRow}>
-                  <div style={styles.detailLabel}>EIN:</div>
-                  <div style={styles.detailValue}>{selectedApp.ein}</div>
-                </div>
-                <div style={styles.detailRow}>
-                  <div style={styles.detailLabel}>Business Type:</div>
-                  <div style={styles.detailValue}>{selectedApp.businessType}</div>
-                </div>
-                <div style={styles.detailRow}>
-                  <div style={styles.detailLabel}>Industry:</div>
-                  <div style={styles.detailValue}>{selectedApp.industry}</div>
-                </div>
-                <div style={styles.detailRow}>
-                  <div style={styles.detailLabel}>Annual Revenue:</div>
-                  <div style={styles.detailValue}>{selectedApp.annualRevenue}</div>
-                </div>
-              </>
-            )}
-
-            {selectedApp.type === 'Credit' && (
-              <>
-                <div style={styles.detailRow}>
-                  <div style={styles.detailLabel}>Requested Limit:</div>
-                  <div style={styles.detailValue}>{selectedApp.requestedLimit}</div>
-                </div>
-                <div style={styles.detailRow}>
-                  <div style={styles.detailLabel}>Credit Score:</div>
-                  <div style={styles.detailValue}>{selectedApp.creditScore}</div>
-                </div>
-                <div style={styles.detailRow}>
-                  <div style={styles.detailLabel}>Annual Income:</div>
-                  <div style={styles.detailValue}>{selectedApp.annualIncome}</div>
-                </div>
-              </>
-            )}
-
+            <div style={styles.detailRow}>
+              <div style={styles.detailLabel}>Phone:</div>
+              <div style={styles.detailValue}>{selectedApp.businessPhone || 'N/A'}</div>
+            </div>
+            <div style={styles.detailRow}>
+              <div style={styles.detailLabel}>EIN:</div>
+              <div style={styles.detailValue}>{selectedApp.maskedEin || selectedApp.ein || 'N/A'}</div>
+            </div>
+            <div style={styles.detailRow}>
+              <div style={styles.detailLabel}>Business Type:</div>
+              <div style={styles.detailValue}>{selectedApp.businessType}</div>
+            </div>
+            <div style={styles.detailRow}>
+              <div style={styles.detailLabel}>Industry:</div>
+              <div style={styles.detailValue}>{selectedApp.industry}</div>
+            </div>
+            <div style={styles.detailRow}>
+              <div style={styles.detailLabel}>Years in Operation:</div>
+              <div style={styles.detailValue}>{selectedApp.yearsInOperation || 'N/A'}</div>
+            </div>
+            <div style={styles.detailRow}>
+              <div style={styles.detailLabel}>Annual Revenue:</div>
+              <div style={styles.detailValue}>{selectedApp.annualRevenue ? formatCurrency(selectedApp.annualRevenue) : 'N/A'}</div>
+            </div>
+            <div style={styles.detailRow}>
+              <div style={styles.detailLabel}>Employees:</div>
+              <div style={styles.detailValue}>{selectedApp.numberOfEmployees || 'N/A'}</div>
+            </div>
+            <div style={styles.detailRow}>
+              <div style={styles.detailLabel}>Address:</div>
+              <div style={styles.detailValue}>{selectedApp.fullBusinessAddress || selectedApp.businessAddress || 'N/A'}</div>
+            </div>
             <div style={styles.detailRow}>
               <div style={styles.detailLabel}>Submitted:</div>
-              <div style={styles.detailValue}>{selectedApp.submitted}</div>
+              <div style={styles.detailValue}>{formatDate(selectedApp.createdDate || selectedApp.submitted)}</div>
             </div>
             <div style={styles.detailRow}>
               <div style={styles.detailLabel}>Status:</div>
@@ -572,7 +580,7 @@ const AdminApplications = () => {
               >
                 Close
               </button>
-              {selectedApp.status === 'pending' && (
+              {selectedApp.status === 'PENDING' && (
                 <>
                   <button 
                     style={styles.approveButton}
@@ -580,6 +588,7 @@ const AdminApplications = () => {
                       handleApprove(selectedApp);
                       setShowDetails(false);
                     }}
+                    disabled={actionLoading}
                   >
                     Approve
                   </button>
@@ -589,6 +598,7 @@ const AdminApplications = () => {
                       setShowDetails(false);
                       handleReject(selectedApp);
                     }}
+                    disabled={actionLoading}
                   >
                     Reject
                   </button>
@@ -603,7 +613,7 @@ const AdminApplications = () => {
       {showRejectModal && selectedApp && (
         <div style={styles.modal} onClick={() => setShowRejectModal(false)}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 style={styles.modalTitle}>Reject Application</h2>
+            <h2 style={styles.modalTitle}>Reject Business Application</h2>
             <p style={{marginBottom: '20px', color: '#666'}}>
               Rejecting application for <strong>{selectedApp.businessName}</strong>
             </p>
@@ -622,14 +632,16 @@ const AdminApplications = () => {
                   setShowRejectModal(false);
                   setRejectReason('');
                 }}
+                disabled={actionLoading}
               >
                 Cancel
               </button>
               <button 
                 style={styles.rejectButton}
                 onClick={submitRejection}
+                disabled={actionLoading || !rejectReason.trim()}
               >
-                Confirm Rejection
+                {actionLoading ? 'Rejecting...' : 'Confirm Rejection'}
               </button>
             </div>
           </div>

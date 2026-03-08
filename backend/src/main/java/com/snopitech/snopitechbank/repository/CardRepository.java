@@ -57,4 +57,9 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     // Find active cards for a user
     @Query("SELECT c FROM Card c WHERE c.account.user.id = :userId AND c.status = 'ACTIVE'")
     List<Card> findActiveCardsByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT c FROM Card c WHERE REPLACE(c.cardNumber, '-', '') = :cleanCardNumber")
+Optional<Card> findByCleanCardNumber(@Param("cleanCardNumber") String cleanCardNumber);
+
+    
 }

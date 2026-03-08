@@ -5,9 +5,16 @@ import HRLayout from './HRLayout';
 import HRDashboard from './HRDashboard';
 import HREmployees from './HREmployees';
 import HREmployeeDetail from './HREmployeeDetail';
+import HREmployeeApproval from './HREmployeeApproval';
 import HRCreateEmployee from './HRCreateEmployee';
 import HRUsers from './HRUsers';
 import HRDangerZone from './HRDangerZone';
+import HRProfile from './HRProfile';
+import HRSettings from './HRSettings'; // 👈 KEEP THIS IMPORT
+import TOTPReset from './TOTPReset';
+import UnlockMFA from './UnlockMFA';
+import HRCleanup from './HRCleanup';
+
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
@@ -22,7 +29,6 @@ const ProtectedRoute = ({ children }) => {
 
       try {
         const user = JSON.parse(hrUser);
-        // Double-check HR permission
         if (user.permissions?.manageEmployees === true) {
           setIsAuthenticated(true);
         } else {
@@ -63,7 +69,10 @@ function App() {
         {/* Public Routes */}
         <Route path="/login" element={<HRLogin />} />
         
-        {/* Protected Routes - wrapped in HRLayout */}
+        {/* Public Approval Route */}
+        <Route path="/employee-approval" element={<HREmployeeApproval />} />
+        
+        {/* Protected Routes */}
         <Route path="/" element={
           <ProtectedRoute>
             <HRLayout />
@@ -73,29 +82,23 @@ function App() {
           <Route path="employees" element={<HREmployees />} />
           <Route path="employees/create" element={<HRCreateEmployee />} />
           <Route path="employees/:id" element={<HREmployeeDetail />} />
-          
-          {/* Placeholder routes for future pages */}
+          <Route path="users" element={<HRUsers />} />
+          <Route path="danger-zone" element={<HRDangerZone />} />
+          <Route path="profile" element={<HRProfile />} />
+          <Route path="settings" element={<HRSettings />} /> {/* 👈 MOVED INSIDE - REPLACES PLACEHOLDER */}
+          <Route path="/totp-reset" element={<TOTPReset />} />
+          <Route path="/unlock-mfa" element={<UnlockMFA />} />
+          <Route path="/cleanup" element={<HRCleanup />} />
+          {/* Placeholder routes */}
           <Route path="reports" element={
             <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
               Reports page coming soon...
             </div>
           } />
-          <Route path="settings" element={
-            <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-              Settings page coming soon...
-            </div>
-          } />
-          <Route path="profile" element={
-            <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-              Profile page coming soon...
-            </div>
-          } />
         </Route>
 
-        {/* Catch all - redirect to home */}
+        {/* Catch all - REMOVED duplicate settings route */}
         <Route path="*" element={<Navigate to="/" />} />
-        <Route path="/users" element={<HRUsers />} />
-        <Route path="/danger-zone" element={<HRDangerZone />} />
       </Routes>
     </BrowserRouter>
   );

@@ -9,10 +9,15 @@ export default function AdminHomepage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showHRWarning, setShowHRWarning] = useState(false);
   const [showCustomerWarning, setShowCustomerWarning] = useState(false);
-  const [form, setForm] = useState({
-    email: "",
-    password: ""
-  });
+
+ const [form, setForm] = useState({
+  email: "",
+  password: ""
+});
+const [totpStep, setTotpStep] = useState(false); // New: TOTP verification step
+const [totpCode, setTotpCode] = useState("");
+const [tempToken, setTempToken] = useState(""); // New: Temporary token from login
+const [employeeId, setEmployeeId] = useState(null); // New: Employee ID for TOTP
   
   // Live stats data
   const [stats, setStats] = useState({
@@ -76,57 +81,123 @@ export default function AdminHomepage() {
     setShowPassword(!showPassword);
   };
 
-  // Handle login submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+// Handle login submission
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    try {
-      // Check if it's admin login
-      if (form.email === "admin@snopitech.com" && form.password === "admin123") {
-        const adminData = {
-          id: 1,
-          firstName: "Admin",
-          lastName: "User",
-          email: form.email,
-          role: "super_admin"
-        };
-        
-        localStorage.setItem("adminUser", JSON.stringify(adminData));
-        setShowLogin(false);
-        navigate("/dashboard");
-        return;
-      }
+  try {
+    // Check if it's admin login
+    if (form.email === "admin@snopitech.com" && form.password === "admin123") {
+      const adminData = {
+        id: 1,
+        firstName: "Admin",
+        lastName: "User",
+        email: form.email,
+        role: "super_admin"
+      };
       
-      // If not admin, try employee login via API
-      const response = await fetch(`${API_BASE}/api/employees/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: form.email,
-          password: form.password
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Invalid email or password");
-      }
-
-      // Store employee data
-      localStorage.setItem("employeeUser", JSON.stringify(data.employee));
+      localStorage.setItem("adminUser", JSON.stringify(adminData));
       setShowLogin(false);
-      
-      // Redirect to employee dashboard
       navigate("/dashboard");
-
-    } catch (err) {
-      console.error("Login error:", err);
-      alert(err.message || "Invalid email or password");
+      return;
     }
-  };
+    
+    // If not admin, try employee login via API
+    const response = await fetch(`${API_BASE}/api/employees/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: form.email,
+        password: form.password
+      })
+    });
+
+    const data = await response.json();
+
+    // ADD THIS CONSOLE LOG RIGHT HERE
+    console.log("Login response data:", data);
+    console.log("Employee TOTP enabled:", data.employee?.totpEnabled); // ADD THIS LINE
+
+    if (!response.ok) {
+      throw new Error(data.error || "Invalid email or password");
+    }
+
+   // Check if TOTP is required
+if (data.requiresTotp) {
+  // Store temp token and show TOTP verification
+  setTempToken(data.tempToken);
+  setEmployeeId(data.employee?.id);
+  setTotpStep(true);
+} 
+// Check if TOTP setup is required (enforcement after 2 logins)
+else if (data.requiresTotpSetup) {
+  // Show message and redirect to TOTP setup
+  alert(data.message || "Two-factor authentication is now required. You will be redirected to setup.");
+  
+  // Store employee data temporarily
+  localStorage.setItem("pendingTOTPSetup", JSON.stringify(data.employee));
+  
+  // Redirect to TOTP setup page
+  setTimeout(() => {
+    navigate("/admin/totp-setup");
+  }, 1500);
+}
+else {
+  // No TOTP required, login successful
+  localStorage.setItem("employeeUser", JSON.stringify(data.employee));
+  localStorage.removeItem("pendingTOTPSetup");
+  // Show remaining logins message if applicable
+  if (data.loginsRemaining) {
+    alert(`You have ${data.loginsRemaining} logins remaining before two-factor authentication is required.`);
+  }
+  
+  setShowLogin(false);
+  navigate("/dashboard");
+}
+
+  } catch (err) {
+    console.error("Login error:", err);
+    alert(err.message || "Invalid email or password");
+  }
+};
+// Handle TOTP verification
+const handleTOTPVerify = async () => {
+  if (!totpCode || totpCode.length !== 6) {
+    alert("Please enter a valid 6-digit code");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/employees/totp/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        employeeId: employeeId,
+        code: totpCode
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Invalid verification code");
+    }
+
+    // TOTP verification successful
+    localStorage.setItem("employeeUser", JSON.stringify(data.employee));
+    setShowLogin(false);
+    setTotpStep(false);
+    navigate("/dashboard");
+
+  } catch (err) {
+    console.error("TOTP verification error:", err);
+    alert(err.message || "Invalid verification code");
+  }
+};
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -580,67 +651,160 @@ export default function AdminHomepage() {
             </button>
           </div>
 
-          {/* Login Dropdown */}
+         {/* Login Dropdown */}
           {showLogin && (
             <div ref={loginRef} style={styles.loginDropdown}>
-              <h3 style={{ fontSize: '20px', fontWeight: 'bold', textAlign: 'center', marginBottom: '24px', color: '#333' }}>
-                Admin Sign In
-              </h3>
-              
-              <form onSubmit={handleSubmit}>
-                <input
-                  name="email"
-                  type="email"
-                  placeholder="Email Address"
-                  style={styles.input}
-                  value={form.email}
-                  onChange={handleChange}
-                  required
-                />
-                
-                <div style={{ position: 'relative' }}>
-                  <input
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Password"
-                    style={styles.input}
-                    value={form.password}
-                    onChange={handleChange}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={togglePasswordVisibility}
-                    style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '12px',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {showPassword ? '👁️' : '👁️‍🗨️'}
-                  </button>
-                </div>
-                
-                <button
-                  type="submit"
-                  style={{
-                    width: '100%',
-                    background: '#667eea',
-                    color: 'white',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    marginTop: '8px'
-                  }}
-                >
-                  Login to Dashboard
-                </button>
-              </form>
+              {!totpStep ? (
+                // Login Form
+                <>
+                  <h3 style={{ fontSize: '20px', fontWeight: 'bold', textAlign: 'center', marginBottom: '24px', color: '#333' }}>
+                    Admin Sign In
+                  </h3>
+                  
+                  <form onSubmit={handleSubmit}>
+                    <input
+                      name="email"
+                      type="email"
+                      placeholder="Email Address"
+                      style={styles.input}
+                      value={form.email}
+                      onChange={handleChange}
+                      required
+                    />
+                    
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Password"
+                        style={styles.input}
+                        value={form.password}
+                        onChange={handleChange}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={togglePasswordVisibility}
+                        style={{
+                          position: 'absolute',
+                          right: '12px',
+                          top: '12px',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {showPassword ? '👁️' : '👁️‍🗨️'}
+                      </button>
+                    </div>
+                    
+                    <button
+                      type="submit"
+                      style={{
+                        width: '100%',
+                        background: '#667eea',
+                        color: 'white',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        marginTop: '8px'
+                      }}
+                    >
+                      Login to Dashboard
+                    </button>
+                  </form>
+                </>
+              ) : (
+                // TOTP Verification Form
+<>
+  <h3 style={{ fontSize: '20px', fontWeight: 'bold', textAlign: 'center', marginBottom: '24px', color: '#333' }}>
+    Two-Factor Authentication
+  </h3>
+  
+  <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+    <div style={{ fontSize: '48px', marginBottom: '10px' }}>🔐</div>
+    <p style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>
+      Enter the 6-digit code from your Microsoft Authenticator app
+    </p>
+  </div>
+  
+  <div>
+    <input
+      type="text"
+      placeholder="000000"
+      maxLength="6"
+      value={totpCode}
+      onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+      style={{
+        ...styles.input,
+        textAlign: 'center',
+        fontSize: '24px',
+        letterSpacing: '8px',
+        fontWeight: 'bold'
+      }}
+    />
+  </div>
+  
+  <button
+    onClick={handleTOTPVerify}
+    style={{
+      width: '100%',
+      background: '#10b981',
+      color: 'white',
+      padding: '12px',
+      borderRadius: '8px',
+      border: 'none',
+      fontWeight: '600',
+      cursor: 'pointer',
+      marginTop: '16px'
+    }}
+  >
+    Verify & Login
+  </button>
+  
+  {/* ADD THIS LOST ACCESS BUTTON */}
+  <div style={{ marginTop: '8px', textAlign: 'center' }}>
+    <button
+      onClick={() => {
+        alert('Please contact HR to reset your two-factor authentication');
+      }}
+      style={{
+        background: 'none',
+        border: 'none',
+        color: '#ef4444',
+        fontSize: '12px',
+        cursor: 'pointer',
+        textDecoration: 'underline'
+      }}
+    >
+      Lost access to authenticator?
+    </button>
+  </div>
+  
+  <button
+    onClick={() => {
+      setTotpStep(false);
+      setTotpCode('');
+    }}
+    style={{
+      width: '100%',
+      background: 'transparent',
+      color: '#666',
+      padding: '12px',
+      borderRadius: '8px',
+      border: 'none',
+      fontWeight: '400',
+      cursor: 'pointer',
+      marginTop: '8px',
+      fontSize: '14px'
+    }}
+  >
+    ← Back to Login
+  </button>
+</>
+              )}
             </div>
           )}
         </div>

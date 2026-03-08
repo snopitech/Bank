@@ -129,17 +129,69 @@ public class BusinessAccountController {
      * POST /api/business/accounts/{accountId}/close - Close a business account
      * (Only works for approved accounts)
      */
-    @PostMapping("/{accountId}/close")
-    public ResponseEntity<?> closeBusinessAccount(
+  @PostMapping("/{accountId}/close")
+public ResponseEntity<?> closeBusinessAccount(
+        @PathVariable Long accountId,
+        @RequestBody Map<String, String> request) {  // <-- Changed to @RequestBody
+    try {
+        String reason = request.get("reason");
+        if (reason == null || reason.trim().isEmpty()) {
+            reason = "Customer request";
+        }
+        BusinessAccountDTO closedAccount = businessAccountService.closeBusinessAccount(accountId, reason);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Business account closed successfully");
+        response.put("account", closedAccount);
+        
+        return ResponseEntity.ok(response);
+    } catch (Exception e) {
+        return ResponseEntity.badRequest().body(Map.of(
+            "error", e.getMessage(),
+            "timestamp", java.time.LocalDateTime.now()
+        ));
+    }
+}
+
+    // ==================== NEW: DISABLE/ENABLE BUSINESS ACCOUNT ====================
+
+    /**
+     * POST /api/business/accounts/{accountId}/disable - Disable a business account (temporary freeze)
+     */
+    @PostMapping("/{accountId}/disable")
+    public ResponseEntity<?> disableBusinessAccount(
             @PathVariable Long accountId,
             @RequestParam String reason) {
         try {
-            BusinessAccountDTO closedAccount = businessAccountService.closeBusinessAccount(accountId, reason);
+            BusinessAccountDTO disabledAccount = businessAccountService.disableBusinessAccount(accountId, reason);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "Business account closed successfully");
-            response.put("account", closedAccount);
+            response.put("message", "Business account disabled successfully");
+            response.put("account", disabledAccount);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", e.getMessage(),
+                "timestamp", java.time.LocalDateTime.now()
+            ));
+        }
+    }
+
+    /**
+     * POST /api/business/accounts/{accountId}/enable - Enable a previously disabled business account
+     */
+    @PostMapping("/{accountId}/enable")
+    public ResponseEntity<?> enableBusinessAccount(@PathVariable Long accountId) {
+        try {
+            BusinessAccountDTO enabledAccount = businessAccountService.enableBusinessAccount(accountId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Business account enabled successfully");
+            response.put("account", enabledAccount);
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {

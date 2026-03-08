@@ -6,7 +6,16 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0); // Changed to start at 0 for verification type
+  // Password visibility states
+const [showPassword, setShowPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Verification type state
+  const [verificationType, setVerificationType] = useState(null); // 'us', 'non-us', 'test'
+  const [idDocument, setIdDocument] = useState(null);
+  const [idDocumentPreview, setIdDocumentPreview] = useState('');
+  const [idDocumentName, setIdDocumentName] = useState('');
 
   const [form, setForm] = useState({
     // Step 1: Personal Info
@@ -16,19 +25,19 @@ export default function Register() {
     phone: "",
     dateOfBirth: "",
     
-    // Step 2: Address Info
+    // Step 2: Address Info - Now free text for global use
     addressLine1: "",
     addressLine2: "",
     city: "",
     state: "",
     zipCode: "",
-    country: "USA",
+    country: "",
     
     // Step 3: Identity & Financial
-    ssn: "",
+    ssn: "", // Only for US citizens
     birthCity: "",
     birthState: "",
-    birthCountry: "USA",
+    birthCountry: "",
     // Financial Information
     employmentStatus: "",
     annualIncome: "",
@@ -123,19 +132,44 @@ export default function Register() {
     "Not Sure"
   ];
 
-  // US States for dropdown
-  const usStates = [
-    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
-    "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
-    "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-    "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
-  ];
-
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setError("");
   };
+
+  // Handle file upload for ID documents
+const handleFileChange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    // Check file size (5MB max)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      setError("File size exceeds 5MB. Please choose a smaller file (max 5MB).");
+      // Clear the file input
+      e.target.value = null;
+      return;
+    }
+    
+    // Check file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
+      setError("Invalid file type. Please upload JPG, PNG, or PDF files only.");
+      e.target.value = null;
+      return;
+    }
+    
+    setIdDocument(file);
+    setIdDocumentName(file.name);
+    setError(""); // Clear any previous errors
+    
+    // Create preview URL
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setIdDocumentPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  }
+};
 
   // Format SSN as XXX-XX-XXXX
   const handleSSNChange = (e) => {
@@ -148,16 +182,10 @@ export default function Register() {
     setForm({ ...form, ssn: value });
   };
 
-  // Format phone as (XXX) XXX-XXXX
-  const handlePhoneChange = (e) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 3 && value.length <= 6) {
-      value = '(' + value.slice(0, 3) + ') ' + value.slice(3);
-    } else if (value.length > 6) {
-      value = '(' + value.slice(0, 3) + ') ' + value.slice(3, 6) + '-' + value.slice(6, 10);
-    }
-    setForm({ ...form, phone: value });
-  };
+ // Simple phone input - accepts any format for global use
+const handlePhoneChange = (e) => {
+  setForm({ ...form, phone: e.target.value });
+};
 
   // Format zip code
   const handleZipChange = (e) => {
@@ -183,6 +211,14 @@ export default function Register() {
     } else {
       setForm({ ...form, annualIncome: value });
     }
+  };
+
+  const validateStep0 = () => {
+    if (!verificationType) {
+      setError("Please select a verification type");
+      return false;
+    }
+    return true;
   };
 
   const validateStep1 = () => {
@@ -218,14 +254,8 @@ export default function Register() {
   const validateStep2 = () => {
     const { addressLine1, city, state, zipCode, country } = form;
     
-    if (!addressLine1.trim() || !city.trim() || !state || !zipCode.trim() || !country) {
+    if (!addressLine1.trim() || !city.trim() || !state.trim() || !zipCode.trim() || !country.trim()) {
       setError("Please fill in all address fields");
-      return false;
-    }
-
-    const zipRegex = /^\d{5}(-\d{4})?$/;
-    if (!zipRegex.test(zipCode)) {
-      setError("Please enter a valid ZIP code (5 or 9 digits)");
       return false;
     }
 
@@ -233,21 +263,51 @@ export default function Register() {
   };
 
   const validateStep3 = () => {
-    const { ssn, birthCity, birthState, birthCountry, employmentStatus, annualIncome, sourceOfFunds, investmentObjective } = form;
+    const { birthCity, birthState, birthCountry, employmentStatus, annualIncome, sourceOfFunds, investmentObjective } = form;
     
-    if (!ssn.trim() || !birthCity.trim() || !birthState || !birthCountry) {
+    if (!birthCity.trim() || !birthState.trim() || !birthCountry.trim()) {
       setError("Please fill in all identity verification fields");
       return false;
     }
 
-    if (!employmentStatus || !annualIncome || !sourceOfFunds || !investmentObjective) {
-      setError("Please fill in all financial information fields");
+    // Validate SSN only for US citizens
+    if (verificationType === 'us') {
+      if (!form.ssn.trim()) {
+        setError("SSN is required for US citizens");
+        return false;
+      }
+      const ssnRegex = /^\d{3}-\d{2}-\d{4}$/;
+      if (!ssnRegex.test(form.ssn)) {
+        setError("SSN must be in format: XXX-XX-XXXX");
+        return false;
+      }
+    }
+
+    // Validate file upload for non-US citizens
+    if (verificationType === 'non-us' && !idDocument) {
+      setError("Please upload your passport or national ID");
       return false;
     }
 
-    const ssnRegex = /^\d{3}-\d{2}-\d{4}$/;
-    if (!ssnRegex.test(ssn)) {
-      setError("SSN must be in format: XXX-XX-XXXX");
+     // Validate document details for non-US citizens
+if (verificationType === 'non-us') {
+  if (!form.documentNumber.trim()) {
+    setError("Please enter your document number");
+    return false;
+  }
+  if (!form.issuingCountry.trim()) {
+    setError("Please enter the issuing country");
+    return false;
+  }
+  if (!form.expiryDate) {
+    setError("Please enter the document expiry date");
+    return false;
+  }
+}
+
+
+    if (!employmentStatus || !annualIncome || !sourceOfFunds || !investmentObjective) {
+      setError("Please fill in all financial information fields");
       return false;
     }
 
@@ -281,7 +341,10 @@ export default function Register() {
   };
 
   const nextStep = () => {
-    if (currentStep === 1 && validateStep1()) {
+    if (currentStep === 0 && validateStep0()) {
+      setCurrentStep(1);
+      setError("");
+    } else if (currentStep === 1 && validateStep1()) {
       setCurrentStep(2);
       setError("");
     } else if (currentStep === 2 && validateStep2()) {
@@ -298,37 +361,29 @@ export default function Register() {
     setError("");
   };
 
-  // Helper function to convert income range to median value
-  const getIncomeValue = (incomeString) => {
-    if (!incomeString) return null;
-    if (incomeString === "custom") return null;
-    if (!incomeRanges.includes(incomeString)) {
-      // Custom amount with commas
-      return parseFloat(incomeString.replace(/,/g, ''));
-    }
-    
-    // Convert range to median value
-    switch(incomeString) {
-      case "Under $25,000":
-        return 12500;
-      case "$25,000 - $49,999":
-        return 37500;
-      case "$50,000 - $74,999":
-        return 62500;
-      case "$75,000 - $99,999":
-        return 87500;
-      case "$100,000 - $149,999":
-        return 125000;
-      case "$150,000 - $199,999":
-        return 175000;
-      case "$200,000 - $299,999":
-        return 250000;
-      case "$300,000+":
-        return 300000;
-      default:
-        return null;
-    }
-  };
+ // Helper function to convert income range to median value
+const getIncomeValue = (incomeString) => {
+  if (!incomeString) return null;
+  
+  // Handle custom amount (already a number string with commas)
+  if (!incomeRanges.includes(incomeString)) {
+    // Remove commas and convert to number
+    const numericValue = parseFloat(incomeString.replace(/,/g, ''));
+    return isNaN(numericValue) ? null : numericValue;
+  }
+  
+  // Handle preset ranges - extract the first number from the range
+  if (incomeString === "Under $25,000") return 12500;
+  if (incomeString === "$25,000 - $49,999") return 37500;
+  if (incomeString === "$50,000 - $74,999") return 62500;
+  if (incomeString === "$75,000 - $99,999") return 87500;
+  if (incomeString === "$100,000 - $149,999") return 125000;
+  if (incomeString === "$150,000 - $199,999") return 175000;
+  if (incomeString === "$200,000 - $299,999") return 250000;
+  if (incomeString === "$300,000+") return 300000;
+  
+  return null;
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -341,33 +396,127 @@ export default function Register() {
 
     try {
       console.log("Registration data:", form);
+      console.log("Verification type:", verificationType);
+      if (verificationType === 'non-us') {
+        console.log("ID Document:", idDocumentName);
+      }
 
-      // STEP 1: Register user (basic info + financial info)
-      const registrationData = {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
-        phone: form.phone,
-        dateOfBirth: form.dateOfBirth,
-        ssn: form.ssn,
-        birthCity: form.birthCity,
-        birthState: form.birthState,
-        birthCountry: form.birthCountry,
-        employmentStatus: form.employmentStatus,
-        annualIncome: form.annualIncome,
-        sourceOfFunds: form.sourceOfFunds,
-        // ⭐ MAP investmentObjective TO riskTolerance
-        riskTolerance: form.investmentObjective,
-        taxBracket: form.taxBracket,
-        password: form.password,
-        confirmPassword: form.confirmPassword
-      };
+     // STEP 1: Register user (basic info + financial info + all data for non-us)
+const registrationData = {
+  firstName: form.firstName,
+  lastName: form.lastName,
+  email: form.email,
+  phone: form.phone,
+  dateOfBirth: form.dateOfBirth,
+  // Only send SSN for US citizens, null for others
+  ssn: verificationType === 'us' ? form.ssn : null,
+  birthCity: form.birthCity,
+  birthState: form.birthState,
+  birthCountry: form.birthCountry,
+  employmentStatus: form.employmentStatus,
+  annualIncome: form.annualIncome,
+  sourceOfFunds: form.sourceOfFunds,
+  // ⭐ MAP investmentObjective TO riskTolerance
+  riskTolerance: form.investmentObjective,
+  taxBracket: form.taxBracket,
+  password: form.password,
+  confirmPassword: form.confirmPassword,
+  // Add verification type for backend processing
+  verificationType: verificationType,
+  // Flags for backend based on verification type
+  ...(verificationType === 'test' && { 
+    testMode: true,
+    skipVerification: true 
+  }),
+  ...(verificationType === 'non-us' && { 
+    requiresManualReview: true,
+    hasIdDocument: !!idDocument 
+  })
+};
 
-      const regRes = await fetch("http://localhost:8080/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(registrationData)
-      });
+// For US citizens, add address fields
+if (verificationType === 'us') {
+  registrationData.addressLine1 = form.addressLine1;
+  registrationData.addressLine2 = form.addressLine2 || "";
+  registrationData.city = form.city;
+  registrationData.state = form.state;
+  registrationData.zipCode = form.zipCode;
+  registrationData.country = form.country;
+  
+  // Add security questions for US citizens too
+  registrationData.securityQuestion1 = form.securityQuestion1;
+  registrationData.securityAnswer1 = form.securityAnswer1;
+  registrationData.securityQuestion2 = form.securityQuestion2;
+  registrationData.securityAnswer2 = form.securityAnswer2;
+  registrationData.securityQuestion3 = form.securityQuestion3;
+  registrationData.securityAnswer3 = form.securityAnswer3;
+}
+
+// For non-US citizens, add address and security questions to the registration data
+if (verificationType === 'non-us') {
+  // Add address fields
+  registrationData.addressLine1 = form.addressLine1;
+  registrationData.addressLine2 = form.addressLine2 || "";
+  registrationData.city = form.city;
+  registrationData.state = form.state;
+  registrationData.zipCode = form.zipCode;
+  registrationData.country = form.country;
+  
+  // Add security questions
+  registrationData.securityQuestion1 = form.securityQuestion1;
+  registrationData.securityAnswer1 = form.securityAnswer1;
+  registrationData.securityQuestion2 = form.securityQuestion2;
+  registrationData.securityAnswer2 = form.securityAnswer2;
+  registrationData.securityQuestion3 = form.securityQuestion3;
+  registrationData.securityAnswer3 = form.securityAnswer3;
+  // Add document details
+registrationData.documentNumber = form.documentNumber;
+registrationData.issuingCountry = form.issuingCountry;
+registrationData.expiryDate = form.expiryDate;
+}
+
+// Choose the right endpoint based on verification type
+let registerUrl = "http://localhost:8080/auth/register";
+let regRes;
+
+if (verificationType === 'non-us' && idDocument) {
+  // For non-US with document, use FormData to send file
+  registerUrl = "http://localhost:8080/auth/register/pending";
+  
+  // Create FormData and append data
+  const formData = new FormData();
+  
+  // Add all registration data as a JSON string
+  formData.append('userData', JSON.stringify(registrationData));
+  
+  // Add the actual file
+  formData.append('document', idDocument);
+  
+  // Send with FormData (no Content-Type header - browser sets it automatically)
+  regRes = await fetch(registerUrl, {
+    method: "POST",
+    body: formData
+  });
+} 
+else if (verificationType === 'us') {
+  // For US citizens, send to US verification endpoint
+  registerUrl = "http://localhost:8080/auth/us-verification/submit";
+  
+  regRes = await fetch(registerUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(registrationData)
+  });
+}
+else {
+  // For test mode, use regular JSON
+  regRes = await fetch(registerUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(registrationData)
+  });
+}
+
 
       const regText = await regRes.text();
       console.log("Registration response:", regText);
@@ -376,32 +525,31 @@ export default function Register() {
         throw new Error(regText || "Registration failed");
       }
 
-      setSuccess("Account created! Setting up your profile...");
+const regData = JSON.parse(regText);
 
-      // STEP 2: Auto-login to get user ID and sessionId
-      const loginRes = await fetch("http://localhost:8080/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: form.email,
-          password: form.password
-        })
-      });
+// Check if this is a pending registration (non-US or US citizen)
+if (regData.status === "PENDING_REVIEW") {
+  setSuccess(regData.message);
+  setTimeout(() => {
+    navigate("/"); // Send to home page
+  }, 3000);
+  return; // Stop here - don't continue with profile setup
+}
 
-      if (!loginRes.ok) {
-        throw new Error("Registration successful but auto-login failed");
-      }
+setSuccess("Account created! Setting up your profile...");
 
-      const user = await loginRes.json();
-      console.log("User after login:", user);
-      
-      const userId = user.id;
-      // ⭐ FIXED: Use sessionId, not token
-      const token = user.sessionId;
-      console.log("🔑 Using sessionId as token:", token);
-      
-      // Save user to localStorage (basic info)
-      localStorage.setItem("loggedInUser", JSON.stringify(user));
+// STEP 2: Get user ID from registration response
+const userId = regData.id;
+console.log("User ID from registration:", userId);
+
+      // Save basic user info (without session)
+      localStorage.setItem("registeredUser", JSON.stringify({
+        id: userId,
+        email: form.email,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        verificationType: verificationType
+      }));
 
       // STEP 3: Update profile with ADDRESS
       setSuccess("Adding your address...");
@@ -410,7 +558,6 @@ export default function Register() {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
           addressLine1: form.addressLine1,
@@ -432,25 +579,22 @@ export default function Register() {
       // STEP 4: Update financial information
       setSuccess("Saving your financial information...");
       
-      // ⭐ FIXED: Convert income range to median value
       const parsedAnnualIncome = getIncomeValue(form.annualIncome);
 
       const financialUpdateRes = await fetch(`http://localhost:8080/api/users/${userId}/update-profile-safe`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
           employmentStatus: form.employmentStatus,
           annualIncome: parsedAnnualIncome,
-          // ⭐ MAP investmentObjective TO riskTolerance
           riskTolerance: form.investmentObjective,
           sourceOfFunds: form.sourceOfFunds,
           taxBracket: form.taxBracket
         })
       });
-
+ 
       if (!financialUpdateRes.ok) {
         const errorText = await financialUpdateRes.text();
         console.warn("Financial update warning:", errorText);
@@ -458,14 +602,13 @@ export default function Register() {
         console.log("Financial information updated successfully");
       }
 
-      // STEP 5: Add security questions - NOW WITH 3 QUESTIONS
+      // STEP 5: Add security questions
       setSuccess("Setting up security questions...");
       
       const securityRes = await fetch(`http://localhost:8080/api/users/${userId}/security-questions`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify([
           {
@@ -492,17 +635,32 @@ export default function Register() {
 
       // STEP 6: Fetch updated user profile with all information
       setSuccess("Loading your complete profile...");
-      
+
       const profileRes = await fetch(`http://localhost:8080/api/users/${userId}`, {
         method: "GET",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
       });
-      
+
       if (profileRes.ok) {
         const updatedUser = await profileRes.json();
-        const completeUser = { ...user, ...updatedUser };
+        const completeUser = { ...regData, ...updatedUser };
+        
+        // STEP 7: Fetch security questions separately
+        try {
+          const securityQuestionsRes = await fetch(`http://localhost:8080/api/users/${userId}/security-questions`, {
+            method: "GET",
+          });
+          
+          if (securityQuestionsRes.ok) {
+            const securityQuestions = await securityQuestionsRes.json();
+            completeUser.securityQuestions = securityQuestions;
+            console.log("Security questions loaded:", securityQuestions);
+          } else {
+            console.warn("Could not fetch security questions, status:", securityQuestionsRes.status);
+          }
+        } catch (secErr) {
+          console.warn("Error fetching security questions:", secErr);
+        }
+        
         localStorage.setItem("loggedInUser", JSON.stringify(completeUser));
         console.log("Complete user profile saved:", completeUser);
       }
@@ -526,6 +684,7 @@ export default function Register() {
     <div className="mb-10">
       <div className="flex items-center justify-between max-w-4xl mx-auto">
         {[
+          { num: 0, label: "Verification", icon: "🆔" },
           { num: 1, label: "Personal Info", icon: "👤" },
           { num: 2, label: "Address", icon: "🏠" },
           { num: 3, label: "Identity & Financial", icon: "💰" },
@@ -552,7 +711,7 @@ export default function Register() {
         <div className="absolute top-0 left-0 h-1 bg-gray-200 w-full rounded"></div>
         <div 
           className="absolute top-0 left-0 h-1 bg-red-600 rounded transition-all duration-300"
-          style={{ width: `${(currentStep - 1) * 33.33}%` }}
+          style={{ width: `${(currentStep) * 25}%` }}
         ></div>
       </div>
     </div>
@@ -589,7 +748,7 @@ export default function Register() {
               <a href="#" className="hover:text-red-200 transition whitespace-nowrap">Wealth</a>
               <a href="#" className="hover:text-red-200 transition whitespace-nowrap">About</a>
               <Link
-                to="/" // CHANGED: from "/login" to "/"
+                to="/"
                 className="bg-white text-red-700 px-4 sm:px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition flex items-center space-x-2 whitespace-nowrap"
               >
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -602,7 +761,7 @@ export default function Register() {
             {/* Mobile Menu Button */}
             <div className="flex items-center space-x-3 md:hidden">
               <Link
-                to="/" // CHANGED: from "/login" to "/"
+                to="/"
                 className="bg-white text-red-700 p-2 rounded-lg font-semibold hover:bg-gray-100 transition flex items-center justify-center"
                 aria-label="Sign In"
               >
@@ -630,7 +789,8 @@ export default function Register() {
                 Open Your Account
               </h1>
               <p className="text-gray-600 text-lg">
-                Step {currentStep} of 4: {
+                Step {currentStep + 1} of 5: {
+                  currentStep === 0 ? "Verification Type" :
                   currentStep === 1 ? "Personal Information" :
                   currentStep === 2 ? "Residential Address" :
                   currentStep === 3 ? "Identity & Financial Information" :
@@ -674,6 +834,86 @@ export default function Register() {
 
               <div className="bg-white rounded-xl shadow-lg p-8">
                 <form onSubmit={handleSubmit}>
+                  {/* STEP 0: VERIFICATION TYPE */}
+                  {currentStep === 0 && (
+                    <div className="space-y-6">
+                      <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                        <div className="flex items-center">
+                          <span className="text-2xl mr-3">🆔</span>
+                          <div>
+                            <h3 className="font-semibold text-gray-800">Identity Verification</h3>
+                            <p className="text-sm text-gray-600">Choose how you want to verify your identity</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* US Citizen Option */}
+                        <div 
+                          onClick={() => setVerificationType('us')}
+                          className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${
+                            verificationType === 'us' 
+                              ? 'border-red-500 bg-red-50 shadow-md' 
+                              : 'border-gray-200 hover:border-red-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <span className="text-4xl mb-3 block">🇺🇸</span>
+                            <h4 className="font-semibold text-lg mb-2">US Citizen</h4>
+                            <p className="text-sm text-gray-600">Verify with your Social Security Number</p>
+                            {verificationType === 'us' && (
+                              <span className="inline-block mt-3 text-red-600 text-sm font-medium">✓ Selected</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Non-US Citizen Option */}
+                        <div 
+                          onClick={() => setVerificationType('non-us')}
+                          className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${
+                            verificationType === 'non-us' 
+                              ? 'border-red-500 bg-red-50 shadow-md' 
+                              : 'border-gray-200 hover:border-red-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <span className="text-4xl mb-3 block">🌍</span>
+                            <h4 className="font-semibold text-lg mb-2">Non-US Citizen</h4>
+                            <p className="text-sm text-gray-600">Upload your passport or national ID</p>
+                            {verificationType === 'non-us' && (
+                              <span className="inline-block mt-3 text-red-600 text-sm font-medium">✓ Selected</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Test Mode Option */}
+                        <div 
+                          onClick={() => setVerificationType('test')}
+                          className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${
+                            verificationType === 'test' 
+                              ? 'border-red-500 bg-red-50 shadow-md' 
+                              : 'border-gray-200 hover:border-red-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <span className="text-4xl mb-3 block">🧪</span>
+                            <h4 className="font-semibold text-lg mb-2">Test Mode</h4>
+                            <p className="text-sm text-gray-600">Skip verification for testing purposes</p>
+                            {verificationType === 'test' && (
+                              <span className="inline-block mt-3 text-red-600 text-sm font-medium">✓ Selected</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-yellow-50 p-4 rounded-lg mt-4">
+                        <p className="text-sm text-yellow-800">
+                          <span className="font-semibold">📋 Note:</span> Your verification method determines how your identity is confirmed. Test mode accounts are for demonstration only.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* STEP 1: PERSONAL INFO */}
                   {currentStep === 1 && (
                     <div className="space-y-6">
@@ -724,14 +964,13 @@ export default function Register() {
                         <div>
                           <label className="block text-gray-700 text-sm font-medium mb-2">Phone Number *</label>
                           <input
-                            type="tel"
-                            name="phone"
-                            value={form.phone}
-                            onChange={handlePhoneChange}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                            placeholder="(123) 456-7890"
-                            maxLength="14"
-                          />
+                           type="tel"
+                           name="phone"
+                           value={form.phone}
+                           onChange={handlePhoneChange}
+                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                           placeholder="+1 123 456 7890 (or your local format)"
+                           />
                         </div>
                         <div>
                           <label className="block text-gray-700 text-sm font-medium mb-2">Date of Birth *</label>
@@ -747,7 +986,7 @@ export default function Register() {
                     </div>
                   )}
 
-                  {/* STEP 2: ADDRESS INFO */}
+                  {/* STEP 2: ADDRESS INFO - GLOBAL FREE TEXT */}
                   {currentStep === 2 && (
                     <div className="space-y-6">
                       <div className="bg-blue-50 p-4 rounded-lg mb-6">
@@ -755,7 +994,7 @@ export default function Register() {
                           <span className="text-2xl mr-3">🏠</span>
                           <div>
                             <h3 className="font-semibold text-gray-800">Residential Address</h3>
-                            <p className="text-sm text-gray-600">Where you currently live</p>
+                            <p className="text-sm text-gray-600">Where you currently live (global addresses accepted)</p>
                           </div>
                         </div>
                       </div>
@@ -792,53 +1031,49 @@ export default function Register() {
                               value={form.city}
                               onChange={handleChange}
                               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                              placeholder="New York"
+                              placeholder="Enter your city"
                             />
                           </div>
                           <div>
-                            <label className="block text-gray-700 text-sm font-medium mb-2">State *</label>
-                            <select
+                            <label className="block text-gray-700 text-sm font-medium mb-2">State/Province *</label>
+                            <input
+                              type="text"
                               name="state"
                               value={form.state}
                               onChange={handleChange}
                               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                            >
-                              <option value="">Select</option>
-                              {usStates.map(state => (
-                                <option key={state} value={state}>{state}</option>
-                              ))}
-                            </select>
+                              placeholder="Enter state/province"
+                            />
                           </div>
                           <div>
-                            <label className="block text-gray-700 text-sm font-medium mb-2">ZIP Code *</label>
+                            <label className="block text-gray-700 text-sm font-medium mb-2">ZIP/Postal Code *</label>
                             <input
                               type="text"
                               name="zipCode"
                               value={form.zipCode}
                               onChange={handleZipChange}
                               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                              placeholder="12345"
+                              placeholder="Enter postal code"
                               maxLength="10"
                             />
                           </div>
                         </div>
                         <div>
                           <label className="block text-gray-700 text-sm font-medium mb-2">Country *</label>
-                          <select
+                          <input
+                            type="text"
                             name="country"
                             value={form.country}
                             onChange={handleChange}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          >
-                            <option value="USA">United States</option>
-                            <option value="Canada">Canada</option>
-                          </select>
+                            placeholder="Enter your country"
+                          />
                         </div>
                       </div>
 
                       <div className="bg-yellow-50 p-4 rounded-lg">
                         <p className="text-sm text-yellow-800">
-                          <span className="font-semibold">📋 Why we need this:</span> Your address is required for account verification, card delivery, and regulatory compliance.
+                          <span className="font-semibold">📋 Why we need this:</span> Your address is required for account verification, card delivery, and regulatory compliance. International addresses are accepted.
                         </p>
                       </div>
                     </div>
@@ -859,19 +1094,111 @@ export default function Register() {
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-gray-700 text-sm font-medium mb-2">Social Security Number *</label>
-                          <input
-                            type="text"
-                            name="ssn"
-                            value={form.ssn}
-                            onChange={handleSSNChange}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                            placeholder="XXX-XX-XXXX"
-                            maxLength="11"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">🔒 Encrypted - We never store your full SSN</p>
-                        </div>
+                        {/* Conditional SSN field - only for US citizens */}
+                        {verificationType === 'us' && (
+                          <div>
+                            <label className="block text-gray-700 text-sm font-medium mb-2">Social Security Number *</label>
+                            <input
+                              type="text"
+                              name="ssn"
+                              value={form.ssn}
+                              onChange={handleSSNChange}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                              placeholder="XXX-XX-XXXX"
+                              maxLength="11"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">🔒 Encrypted - We never store your full SSN</p>
+                          </div>
+                        )}
+
+                        {/* File upload for non-US citizens */}
+                       {verificationType === 'non-us' && (
+  <>
+    {/* Document Upload */}
+    <div className="md:col-span-2">
+      <label className="block text-gray-700 text-sm font-medium mb-2">Passport or National ID *</label>
+      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-red-300 transition">
+        {!idDocumentPreview ? (
+          <div>
+            <input
+              type="file"
+              id="idDocument"
+              accept="image/*,.pdf"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <label
+              htmlFor="idDocument"
+              className="cursor-pointer inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Choose File
+            </label>
+            <p className="mt-2 text-sm text-gray-500">or drag and drop</p>
+            <p className="text-xs text-gray-400 mt-1">PNG, JPG, PDF up to 10MB</p>
+          </div>
+        ) : (
+          <div>
+            <img src={idDocumentPreview} alt="ID Preview" className="max-h-48 mx-auto mb-3 rounded" />
+            <p className="text-sm text-gray-700 mb-2">{idDocumentName}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setIdDocument(null);
+                setIdDocumentPreview('');
+                setIdDocumentName('');
+              }}
+              className="text-red-600 text-sm hover:underline"
+            >
+              Remove and choose another
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Document Number */}
+    <div className="md:col-span-2">
+      <label className="block text-gray-700 text-sm font-medium mb-2">Document Number *</label>
+      <input
+        type="text"
+        name="documentNumber"
+        value={form.documentNumber}
+        onChange={handleChange}
+        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+        placeholder="Enter the document ID number"
+      />
+    </div>
+
+    {/* Issuing Country */}
+    <div>
+      <label className="block text-gray-700 text-sm font-medium mb-2">Issuing Country *</label>
+      <input
+        type="text"
+        name="issuingCountry"
+        value={form.issuingCountry}
+        onChange={handleChange}
+        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+        placeholder="Country that issued the document"
+      />
+    </div>
+
+    {/* Expiry Date */}
+    <div>
+      <label className="block text-gray-700 text-sm font-medium mb-2">Expiry Date *</label>
+      <input
+        type="date"
+        name="expiryDate"
+        value={form.expiryDate}
+        onChange={handleChange}
+        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+      />
+    </div>
+  </>
+)}
+
                         <div>
                           <label className="block text-gray-700 text-sm font-medium mb-2">Birth City *</label>
                           <input
@@ -884,32 +1211,26 @@ export default function Register() {
                           />
                         </div>
                         <div>
-                          <label className="block text-gray-700 text-sm font-medium mb-2">Birth State *</label>
-                          <select
+                          <label className="block text-gray-700 text-sm font-medium mb-2">Birth State/Province *</label>
+                          <input
+                            type="text"
                             name="birthState"
                             value={form.birthState}
                             onChange={handleChange}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          >
-                            <option value="">Select State</option>
-                            {usStates.map(state => (
-                              <option key={state} value={state}>{state}</option>
-                            ))}
-                          </select>
+                            placeholder="State/Province of birth"
+                          />
                         </div>
-                        <div>
+                        <div className="md:col-span-2">
                           <label className="block text-gray-700 text-sm font-medium mb-2">Birth Country *</label>
-                          <select
+                          <input
+                            type="text"
                             name="birthCountry"
                             value={form.birthCountry}
                             onChange={handleChange}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          >
-                            <option value="USA">United States</option>
-                            <option value="Canada">Canada</option>
-                            <option value="UK">United Kingdom</option>
-                            <option value="Other">Other</option>
-                          </select>
+                            placeholder="Country of birth"
+                          />
                         </div>
                       </div>
 
@@ -1038,39 +1359,77 @@ export default function Register() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                          <label className="block text-gray-700 text-sm font-medium mb-2">Password *</label>
-                          <input
-                            type="password"
-                            name="password"
-                            value={form.password}
-                            onChange={handleChange}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                            placeholder="Create a strong password"
-                          />
-                          <div className="mt-2">
-                            <div className="flex items-center">
-                              <div className={`w-2 h-2 rounded-full mr-2 ${form.password.length >= 8 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                              <span className={`text-xs ${form.password.length >= 8 ? 'text-green-600' : 'text-gray-500'}`}>
-                                At least 8 characters
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-gray-700 text-sm font-medium mb-2">Confirm Password *</label>
-                          <input
-                            type="password"
-                            name="confirmPassword"
-                            value={form.confirmPassword}
-                            onChange={handleChange}
-                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                              form.confirmPassword && form.password !== form.confirmPassword 
-                                ? 'border-red-500 bg-red-50' 
-                                : 'border-gray-300'
-                            }`}
-                            placeholder="Re-enter your password"
-                          />
-                        </div>
+                       
+  <label className="block text-gray-700 text-sm font-medium mb-2">Password *</label>
+  <div className="relative">
+    <input
+      type={showPassword ? "text" : "password"}
+      name="password"
+      value={form.password}
+      onChange={handleChange}
+      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent pr-12"
+      placeholder="Create a strong password"
+    />
+    <button
+      type="button"
+      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+      onClick={() => setShowPassword(!showPassword)}
+    >
+      {showPassword ? (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+        </svg>
+      ) : (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      )}
+    </button>
+  </div>
+  <div className="mt-2">
+    <div className="flex items-center">
+      <div className={`w-2 h-2 rounded-full mr-2 ${form.password.length >= 8 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+      <span className={`text-xs ${form.password.length >= 8 ? 'text-green-600' : 'text-gray-500'}`}>
+        At least 8 characters
+      </span>
+    </div>
+  </div>
+</div>
+<div>
+  <label className="block text-gray-700 text-sm font-medium mb-2">Confirm Password *</label>
+  <div className="relative">
+    <input
+      type={showConfirmPassword ? "text" : "password"}
+      name="confirmPassword"
+      value={form.confirmPassword}
+      onChange={handleChange}
+      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent pr-12 ${
+        form.confirmPassword && form.password !== form.confirmPassword 
+          ? 'border-red-500 bg-red-50' 
+          : 'border-gray-300'
+      }`}
+      placeholder="Re-enter your password"
+    />
+    <button
+      type="button"
+      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+    >
+      {showConfirmPassword ? (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+        </svg>
+      ) : (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      )}
+    </button>
+  </div>
+</div>
+
                       </div>
 
                       <div className="border-t pt-6">
@@ -1130,7 +1489,7 @@ export default function Register() {
                             />
                           </div>
                           
-                          {/* Question 3 - NEW */}
+                          {/* Question 3 */}
                           <div>
                             <label className="block text-gray-700 text-sm font-medium mb-2">Question 3 *</label>
                             <select
@@ -1189,7 +1548,7 @@ export default function Register() {
 
                   {/* NAVIGATION BUTTONS */}
                   <div className="flex justify-between mt-8 pt-4 border-t">
-                    {currentStep > 1 && (
+                    {currentStep > 0 && (
                       <button
                         type="button"
                         onClick={prevStep}

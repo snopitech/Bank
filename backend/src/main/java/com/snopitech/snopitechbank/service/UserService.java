@@ -10,6 +10,8 @@ public interface UserService {
 
     User createUser(User user);
     List<User> getAllUsers();
+    // ⭐ SEARCH USERS BY NAME
+    List<User> searchUsersByName(String name);
     User getUserById(Long id);
     void deleteUser(Long id);
     User updateUserProfile(Long userId, UpdateUserProfileDTO dto);
@@ -23,4 +25,7 @@ public interface UserService {
     
     // ⭐ NEW: Find user by account number for admin lookup
     User getUserByAccountNumber(String accountNumber);
+    
+    // TO THIS:
+    User findByEmailIgnoreCase(String email);
 }

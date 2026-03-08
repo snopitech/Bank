@@ -77,6 +77,15 @@ public class User {
     
     @Column(name = "reset_token_expiry")
     private LocalDateTime resetTokenExpiry;
+     
+@Column(name = "failed_login_attempts", nullable = false)
+private int failedLoginAttempts = 0;
+
+@Column(name = "account_locked", nullable = false)
+private boolean accountLocked = false;
+
+@Column(name = "lock_expiry")
+private LocalDateTime lockExpiry;
 
     // ⭐ FINANCIAL INFORMATION FIELDS
     private String employmentStatus;      // EMPLOYED, SELF_EMPLOYED, UNEMPLOYED, RETIRED, STUDENT
@@ -97,6 +106,30 @@ public class User {
         this.memberSince = LocalDateTime.now(); // Auto-set on creation
     }
     
+    public void incrementFailedAttempts() {
+    this.failedLoginAttempts++;
+}
+
+public void resetFailedAttempts() {
+    this.failedLoginAttempts = 0;
+}
+
+public boolean isLocked() {
+    if (!accountLocked) return false;
+    if (lockExpiry != null && lockExpiry.isBefore(LocalDateTime.now())) {
+        // Lock expired, auto-unlock
+        this.accountLocked = false;
+        this.lockExpiry = null;
+        return false;
+    }
+    return accountLocked;
+}
+
+public void lockAccount() {
+    this.accountLocked = true;
+    this.lockExpiry = LocalDateTime.now().plusMinutes(30); // Lock for 30 minutes
+}
+
     // Constructor for registration
     public User(String firstName, String lastName, String email, String password, 
                 String phone, LocalDate dateOfBirth, String ssnEncrypted, 
@@ -393,4 +426,27 @@ public void setSessionId(String sessionId) { this.sessionId = sessionId; }
     public void setResetTokenExpiry(LocalDateTime resetTokenExpiry) {
         this.resetTokenExpiry = resetTokenExpiry;
     }
+    public int getFailedLoginAttempts() {
+    return failedLoginAttempts;
+}
+
+public void setFailedLoginAttempts(int failedLoginAttempts) {
+    this.failedLoginAttempts = failedLoginAttempts;
+}
+
+public boolean isAccountLocked() {
+    return accountLocked;
+}
+
+public void setAccountLocked(boolean accountLocked) {
+    this.accountLocked = accountLocked;
+}
+
+public LocalDateTime getLockExpiry() {
+    return lockExpiry;
+}
+
+public void setLockExpiry(LocalDateTime lockExpiry) {
+    this.lockExpiry = lockExpiry;
+}
 }

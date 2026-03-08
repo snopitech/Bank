@@ -100,7 +100,7 @@ export default function VerifyEmailChange() {
         
         // Redirect to login page after 3 seconds
         setTimeout(() => {
-          navigate("/login");
+          window.location.href = "/";
         }, 3000);
       } else {
         const errorText = await res.text();

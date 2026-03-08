@@ -17,7 +17,7 @@ public class OpenBusinessAccountRequest {
     private String businessName;
 
     @NotBlank(message = "EIN (Tax ID) is required")
-    @Pattern(regexp = "^\\d{2}-\\d{7}$|^\\d{9}$", message = "EIN must be in format XX-XXXXXXX or 9 digits")
+    @Pattern(regexp = "^\\d{2}-\\d{5,7}$|^\\d{7,9}$", message = "EIN must be between 7-9 digits (with or without dash)")
     private String ein;
 
     @NotBlank(message = "Business type is required")
@@ -271,7 +271,7 @@ public class OpenBusinessAccountRequest {
         if (ein == null) return null;
         // Remove any existing dashes and format as XX-XXXXXXX
         String cleanEin = ein.replaceAll("[^0-9]", "");
-        if (cleanEin.length() == 9) {
+        if (cleanEin.length() >= 7 && cleanEin.length() <= 9) {
             return cleanEin.substring(0, 2) + "-" + cleanEin.substring(2);
         }
         return ein;

@@ -39,7 +39,28 @@ public class UserController {
     public User getUserById(@PathVariable Long id) {
         return userService.getUserById(id);
     }
-
+    // ⭐ SEARCH USERS BY NAME
+@GetMapping("/search")
+public ResponseEntity<?> searchUsers(@RequestParam String name) {
+    try {
+        List<User> users = userService.searchUsersByName(name);
+        // Return only needed fields to keep response small
+        List<Map<String, Object>> simplifiedUsers = users.stream().map(user -> {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", user.getId());
+            map.put("firstName", user.getFirstName());
+            map.put("lastName", user.getLastName());
+            map.put("email", user.getEmail());
+            map.put("phone", user.getPhone());
+            map.put("memberSince", user.getMemberSince());
+            return map;
+        }).toList();
+        return ResponseEntity.ok(simplifiedUsers);
+    } catch (Exception e) {
+        return ResponseEntity.internalServerError()
+            .body(Map.of("error", "Error searching users: " + e.getMessage()));
+    }
+}
     // ⭐ CREATE USER
     @PostMapping
     public User createUser(@RequestBody User user) {

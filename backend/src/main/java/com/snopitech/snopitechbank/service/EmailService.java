@@ -26,4 +26,5 @@ public interface EmailService {
     void sendTestEmail(String toEmail);
 
     void sendEmail(String email, String subject, String htmlContent);
+    void sendSimpleEmail(String toEmail, String subject, String textContent);
 }

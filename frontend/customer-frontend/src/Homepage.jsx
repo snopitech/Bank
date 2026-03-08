@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 
 import { useContactModal } from "./ContactModalContext";
 import ContactModal from "./ContactModal";
+import VerificationModal from "./components/VerificationModal";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -19,6 +20,10 @@ export default function Login() {
   const mobileMenuRef = useRef(null);
   const mobileMenuButtonRef = useRef(null);
   const mobileLoginOverlayRef = useRef(null);
+
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [tempUserId, setTempUserId] = useState(null);
+  const [tempEmail, setTempEmail] = useState("");
 
   // Get contact modal functions
   const { openModal, isOpen, closeModal } = useContactModal();
@@ -65,24 +70,36 @@ export default function Login() {
         body: JSON.stringify(form)
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        alert("Invalid email or password");
+        alert(data.error || "Invalid email or password");
         return;
       }
 
-      const user = await res.json();
-      console.log("Login response:", user);
+      // Check if 2FA is required
+      if (data.requiresCode) {
+        // Show verification modal
+        setShowVerificationModal(true);
+        setTempUserId(data.userId);
+        setTempEmail(form.email);
+        return;
+      }
+
+      // If no 2FA required (fallback for backward compatibility)
+      console.log("Login response:", data);
 
       // Fetch complete user profile (includes address, security questions, etc.)
-      const fullProfile = await fetchUserProfile(user.id, user.token);
+      const fullProfile = await fetchUserProfile(data.id, data.token);
       
       // Merge login response with full profile data
       const completeUserData = {
-        ...user,
+        ...data,
         ...fullProfile,
         // Preserve token and other auth data
-        token: user.token,
-        id: user.id || fullProfile?.id
+        token: data.token,
+        sessionId: data.sessionId,
+        id: data.id || fullProfile?.id
       };
 
       // Save complete user data to localStorage
@@ -208,7 +225,7 @@ export default function Login() {
                   <span className="hidden sm:inline">Sign In</span>
                 </button>
 
-                {/* Login Dropdown for Desktop - REMOVED "Open one" button */}
+                {/* Login Dropdown for Desktop */}
                 {showLogin && (
                   <div 
                     ref={loginRef}
@@ -280,8 +297,6 @@ export default function Login() {
                         Login
                       </button>
                     </form>
-                    
-                    {/* REMOVED: Don't have an account? Open one button */}
                   </div>
                 )}
               </div>
@@ -369,7 +384,7 @@ export default function Login() {
         </div>
       </header>
 
-      {/* Mobile Login Form Overlay - REMOVED "Open one" button */}
+      {/* Mobile Login Form Overlay */}
       {showLogin && (
         <div 
           ref={mobileLoginOverlayRef}
@@ -460,16 +475,46 @@ export default function Login() {
                   Login
                 </button>
               </form>
-              
-              {/* REMOVED: Don't have an account? Open one button */}
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Content - FULL WIDTH */}
+      {/* Verification Modal */}
+      {showVerificationModal && (
+        <VerificationModal
+          userId={tempUserId}
+          email={tempEmail}
+          onClose={() => {
+            setShowVerificationModal(false);
+            setTempUserId(null);
+            setTempEmail("");
+          }}
+  onSuccess={async (userData) => {
+  setShowVerificationModal(false);
+  
+  // Fetch complete user profile
+  const fullProfile = await fetchUserProfile(userData.id, userData.token);
+  
+  const completeUserData = {
+    ...userData,
+    ...fullProfile,
+    token: userData.token,
+    sessionId: userData.sessionId,
+    id: userData.id || fullProfile?.id
+  };
+  
+  localStorage.setItem("loggedInUser", JSON.stringify(completeUserData));
+  setShowLogin(false);
+  setIsMobileMenuOpen(false);
+  navigate("/dashboard");
+}}
+        />
+      )}
+
+      {/* Main Content */}
       <main className="flex-1 w-full">
-        {/* Hero Section - FULL WIDTH */}
+        {/* Hero Section */}
         <section className="relative overflow-hidden bg-gradient-to-br from-red-600 to-red-800 text-white w-full">
           <div className="w-full px-4 sm:px-6 lg:px-8 py-12 sm:py-20 md:py-32">
             <div className="max-w-7xl mx-auto">
@@ -529,7 +574,7 @@ export default function Login() {
           <div className="absolute bottom-0 left-0 w-48 h-48 sm:w-96 sm:h-96 bg-red-400 rounded-full translate-y-24 sm:translate-y-48 -translate-x-24 sm:-translate-x-48 opacity-10"></div>
         </section>
 
-        {/* Features Section - FULL WIDTH */}
+        {/* Features Section */}
         <section id="features" className="py-12 sm:py-16 md:py-20 bg-white w-full">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto">
@@ -580,7 +625,7 @@ export default function Login() {
           </div>
         </section>
 
-        {/* Stats Section - FULL WIDTH */}
+        {/* Stats Section */}
         <section className="py-12 sm:py-16 bg-gradient-to-r from-red-50 to-white w-full">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto">
@@ -606,7 +651,7 @@ export default function Login() {
           </div>
         </section>
 
-        {/* CTA Section - FULL WIDTH */}
+        {/* CTA Section */}
         <section className="py-12 sm:py-16 md:py-20 bg-gradient-to-r from-red-700 to-red-800 text-white w-full">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto text-center">
@@ -645,7 +690,7 @@ export default function Login() {
         </section>
       </main>
 
-      {/* Footer - FULL WIDTH (FIXED) */}
+      {/* Footer */}
       <footer className="bg-gray-900 text-white pt-12 pb-6 sm:pt-16 sm:pb-8 w-full">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="max-w-[1920px] mx-auto">

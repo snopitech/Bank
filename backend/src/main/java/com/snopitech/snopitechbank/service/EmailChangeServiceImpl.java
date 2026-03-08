@@ -60,7 +60,7 @@ public class EmailChangeServiceImpl implements EmailChangeService {
         userRepository.save(user);
         
         // Build verification link (frontend URL)
-        String verificationLink = "http://localhost:5173/verify-email-change?token=" + token;
+       String verificationLink = "http://localhost:5175/verify-email-change?token=" + token;
         
         // Send email using the existing method
         emailService.sendEmailChangeVerification(

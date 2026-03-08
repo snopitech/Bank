@@ -47,6 +47,43 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    public void sendSimpleEmail(String toEmail, String subject, String textContent) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            
+            helper.setFrom("Snopitech Bank <no-reply@snopitechbank.com>");
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            
+            // Create HTML version with better formatting
+            String htmlContent = "<!DOCTYPE html>" +
+                "<html><head><style>" +
+                "body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }" +
+                ".container { max-width: 600px; margin: 0 auto; padding: 20px; }" +
+                ".header { background: #dc2626; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }" +
+                ".content { padding: 20px; background: #f9f9f9; }" +
+                ".code { font-size: 32px; font-weight: bold; color: #dc2626; text-align: center; padding: 20px; letter-spacing: 5px; }" +
+                ".footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }" +
+                "</style></head><body>" +
+                "<div class='container'>" +
+                "<div class='header'><h2>SnopitechBank Verification</h2></div>" +
+                "<div class='content'>" +
+                "<p>" + textContent.replace("\n", "<br>") + "</p>" +
+                "</div>" +
+                "<div class='footer'>" +
+                "<p>© " + java.time.Year.now().getValue() + " SnopitechBank. All rights reserved.</p>" +
+                "</div></div></body></html>";
+            
+            helper.setText(htmlContent, true);
+            
+            mailSender.send(message);
+            
+        } catch (MessagingException e) {
+            throw new RuntimeException("Failed to send simple email to " + toEmail, e);
+        }
+    }
+
     @Override
     public void sendEmailChangeVerification(String toEmail, String userName, String verificationLink, String newEmail) {
         try {

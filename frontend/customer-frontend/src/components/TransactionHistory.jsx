@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+const API_BASE = "http://localhost:8080";
 
 const TransactionHistory = ({
   transactions,
@@ -24,11 +26,222 @@ const TransactionHistory = ({
   filteredTransactions,
   currentTransactions,
   totalPages,
-  handlePageChange
+  handlePageChange,
+  checkingAccount,
+  savingsAccount,
+   loanAccounts = [],  
+  businessAccounts = [],
+  creditAccounts = []
 }) => {
-  // Calculate pagination values
+  const [accountTransactions, setAccountTransactions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const user = JSON.parse(localStorage.getItem("loggedInUser"));
+
+  // Fetch transactions when selected account changes
+  useEffect(() => {
+    fetchAccountTransactions();
+    console.log('Loan accounts in TransactionHistory:', loanAccounts)
+  }, [selectedAccount]);
+
+const fetchAccountTransactions = async () => {
+  setLoading(true);
+  try {
+    let response;
+    
+    // Handle different account types
+    if (selectedAccount === "CHECKING" && checkingAccount) {
+      response = await fetch(`${API_BASE}/api/accounts/${checkingAccount.id}/transactions`);
+      if (response && response.ok) {
+        const data = await response.json();
+        setAccountTransactions(data);
+      } else {
+        setAccountTransactions([]);
+      }
+    } 
+    else if (selectedAccount === "SAVINGS" && savingsAccount) {
+      response = await fetch(`${API_BASE}/api/accounts/${savingsAccount.id}/transactions`);
+      if (response && response.ok) {
+        const data = await response.json();
+        setAccountTransactions(data);
+      } else {
+        setAccountTransactions([]);
+      }
+    }
+    else if (selectedAccount.startsWith("BUSINESS_")) {
+      const businessId = selectedAccount.replace("BUSINESS_", "");
+      const business = businessAccounts.find(b => b.id.toString() === businessId);
+      if (business && business.accountId) {
+        response = await fetch(`${API_BASE}/api/accounts/${business.accountId}/transactions`);
+        if (response && response.ok) {
+          const data = await response.json();
+          setAccountTransactions(data);
+        } else {
+          setAccountTransactions([]);
+        }
+      }
+    }
+    else if (selectedAccount.startsWith("CREDIT_")) {
+      const creditId = selectedAccount.replace("CREDIT_", "");
+      response = await fetch(`${API_BASE}/api/credit/accounts/${creditId}/transactions?userId=${user.id}`);
+      if (response && response.ok) {
+        const data = await response.json();
+        setAccountTransactions(data);
+      } else {
+        setAccountTransactions([]);
+      }
+    }
+    else if (selectedAccount.startsWith("LOAN_")) {
+      const loanId = selectedAccount.replace("LOAN_", "");
+      console.log('Fetching loan transactions for ID:', loanId);
+      response = await fetch(`${API_BASE}/api/loan/accounts/${loanId}/payments`, {
+        headers: { 'sessionId': user?.sessionId }
+      });
+      console.log('Loan response status:', response.status);
+      
+      if (response && response.ok) {
+        const data = await response.json();
+        console.log('Raw loan transaction data:', data);
+        
+        const transformedData = data.map((payment, index) => ({
+          id: payment.id || `loan-${loanId}-${index}`,
+          timestamp: payment.date || payment.paymentDate || payment.timestamp || new Date().toISOString(),
+          type: 'PAYMENT',
+          description: payment.description || 'Loan Payment',
+          amount: payment.amount || 0,
+          balanceAfter: payment.balanceAfter || payment.remainingBalance || 0
+        }));
+        
+        console.log('Transformed data:', transformedData);
+        setAccountTransactions(transformedData);
+      } else {
+        setAccountTransactions([]);
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error fetching account transactions:', error);
+    setAccountTransactions([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  // Use either the passed transactions or account-specific transactions
+  const displayTransactions = accountTransactions.length > 0 ? accountTransactions : transactions;
+
+  // Apply filters to account transactions
+  const getFilteredAccountTransactions = () => {
+    return displayTransactions.filter(tx => {
+      if (filterType !== "ALL" && tx.type !== filterType) return false;
+
+      if (filterStartDate) {
+        const txDate = new Date(tx.timestamp);
+        const start = new Date(filterStartDate);
+        if (txDate < start) return false;
+      }
+
+      if (filterEndDate) {
+        const txDate = new Date(tx.timestamp);
+        const end = new Date(filterEndDate);
+        if (txDate > end) return false;
+      }
+
+      if (filterMinAmount && tx.amount < parseFloat(filterMinAmount)) return false;
+      if (filterMaxAmount && tx.amount > parseFloat(filterMaxAmount)) return false;
+
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase().trim();
+        const descriptionMatch = tx.description?.toLowerCase().includes(query);
+        const amountMatch = tx.amount.toString().includes(query);
+        const typeMatch = tx.type?.toLowerCase().includes(query);
+        const dateMatch = new Date(tx.timestamp)
+          .toLocaleDateString()
+          .toLowerCase()
+          .includes(query);
+        
+        return descriptionMatch || amountMatch || typeMatch || dateMatch;
+      }
+
+      return true;
+    });
+  }
+
+  const filteredAccountTransactions = getFilteredAccountTransactions();
+  
+  // Pagination for account transactions
   const indexOfLastTransaction = currentPage * transactionsPerPage;
   const indexOfFirstTransaction = indexOfLastTransaction - transactionsPerPage;
+  const currentAccountTransactions = filteredAccountTransactions.slice(indexOfFirstTransaction, indexOfLastTransaction);
+  const accountTotalPages = Math.ceil(filteredAccountTransactions.length / transactionsPerPage);
+
+  // Calculate pagination values
+  const indexOfLast = currentPage * transactionsPerPage;
+  const indexOfFirst = indexOfLast - transactionsPerPage;
+  
+  // Use either the passed transactions or our fetched ones
+  const currentDisplayTransactions = accountTransactions.length > 0 
+    ? currentAccountTransactions 
+    : currentTransactions;
+  
+  const displayTotalPages = accountTransactions.length > 0 
+    ? accountTotalPages 
+    : totalPages;
+
+  // Helper function to get account display name
+const getAccountDisplayName = (accountType) => {
+  if (accountType === "CHECKING") return "Everyday Checking";
+  if (accountType === "SAVINGS") return "Everyday Savings";
+  if (accountType.startsWith("BUSINESS_")) {
+    const businessId = accountType.replace("BUSINESS_", "");
+    const business = businessAccounts.find(b => b.id.toString() === businessId);
+    return business?.businessName || "Business Account";
+  }
+  if (accountType.startsWith("CREDIT_")) {
+    const creditId = accountType.replace("CREDIT_", "");
+    const credit = creditAccounts.find(c => c.id.toString() === creditId);
+    return "Credit Card" + (credit?.maskedAccountNumber ? ` (${credit.maskedAccountNumber.slice(-4)})` : "");
+  }
+  // ADD THIS SECTION
+  if (accountType.startsWith("LOAN_")) {
+    const loanId = accountType.replace("LOAN_", "");
+    const loan = loanAccounts.find(l => l.id.toString() === loanId);
+    return "Loan Account" + (loan?.maskedAccountNumber ? ` (${loan.maskedAccountNumber.slice(-4)})` : "");
+  }
+  return accountType;
+};
+
+  // Build list of available accounts
+const availableAccounts = [
+  ...(checkingAccount ? [{ type: "CHECKING", label: "Everyday Checking" }] : []),
+  ...(savingsAccount ? [{ type: "SAVINGS", label: "Everyday Savings" }] : []),
+  ...businessAccounts.map((biz) => ({
+    type: `BUSINESS_${biz.id}`,
+    label: biz.businessName || "Business Account"
+  })),
+  ...creditAccounts.map((credit) => ({
+    type: `CREDIT_${credit.id}`,
+    label: "Credit Card",
+    maskedNumber: credit.maskedAccountNumber
+  })),
+  // ADD THIS SECTION
+  ...(loanAccounts || []).map((loan) => ({
+    type: `LOAN_${loan.id}`,
+    label: "Loan Account",
+    maskedNumber: loan.maskedAccountNumber
+  }))
+];
+
+  if (loading) {
+    return (
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">Transaction History</h2>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="mb-10">
@@ -36,29 +249,49 @@ const TransactionHistory = ({
         Transaction History
       </h2>
 
-      {/* Account Switcher */}
-      <div className="flex space-x-4 mb-6">
-        <button
-          onClick={() => setSelectedAccount("CHECKING")}
-          className={`px-4 py-2 rounded-lg font-semibold transition ${
-            selectedAccount === "CHECKING"
-              ? "bg-gray-800 text-white"
-              : "bg-gray-200 text-gray-700"
-          }`}
-        >
-          Everyday Checking
-        </button>
+      {/* Account Switcher - Dynamically render all available accounts */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {availableAccounts.map((account) => {
+          // Determine color based on account type
+          let bgColor = "bg-gray-200";
+          let activeBgColor = "bg-gray-800";
+          
+          if (account.type.startsWith("BUSINESS_")) {
+            bgColor = "bg-purple-200";
+            activeBgColor = "bg-purple-700";
+          } else if (account.type.startsWith("CREDIT_")) {
+            bgColor = "bg-blue-200";
+            activeBgColor = "bg-blue-700";
+          } 
+          else if (account.type.startsWith("LOAN_")) {
+            bgColor = "bg-green-200";
+            activeBgColor = "bg-green-700";
+   }
 
-        <button
-          onClick={() => setSelectedAccount("SAVINGS")}
-          className={`px-4 py-2 rounded-lg font-semibold transition ${
-            selectedAccount === "SAVINGS"
-              ? "bg-gray-800 text-white"
-              : "bg-gray-200 text-gray-700"
-          }`}
-        >
-          Everyday Savings
-        </button>
+          return (
+            <button
+              key={account.type}
+              onClick={() => setSelectedAccount(account.type)}
+              className={`px-4 py-2 rounded-lg font-semibold transition ${
+                selectedAccount === account.type
+                  ? `${activeBgColor} text-white`
+                  : `${bgColor} text-gray-700 hover:bg-opacity-80`
+              }`}
+              title={account.maskedNumber ? `Account: ${account.maskedNumber}` : ""}
+            >
+              {account.label}
+            {account.type.startsWith("LOAN_") && (
+            <span className="ml-2 text-xs opacity-75">
+             {account.maskedNumber ? account.maskedNumber.slice(-4) : "••••"}
+            </span>
+            )}
+            </button>
+          );
+        })}
+
+        {availableAccounts.length === 0 && (
+          <p className="text-gray-500">No accounts available</p>
+        )}
       </div>
 
       {/* Search Bar */}
@@ -87,9 +320,9 @@ const TransactionHistory = ({
         {searchQuery && (
           <p className="mt-2 text-sm text-gray-600">
             Searching for: "<span className="font-semibold">{searchQuery}</span>"
-            {filteredTransactions.length > 0 && (
+            {filteredAccountTransactions.length > 0 && (
               <span className="ml-2">
-                • Found {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
+                • Found {filteredAccountTransactions.length} transaction{filteredAccountTransactions.length !== 1 ? 's' : ''}
               </span>
             )}
           </p>
@@ -181,7 +414,7 @@ const TransactionHistory = ({
           
           <div className="text-sm text-gray-600 flex items-center">
             <span className="mr-2">📊</span>
-            Showing {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
+            Showing {filteredAccountTransactions.length} transaction{filteredAccountTransactions.length !== 1 ? 's' : ''}
           </div>
         </div>
       </div>
@@ -202,12 +435,9 @@ const TransactionHistory = ({
             </thead>
 
             <tbody>
-              {currentTransactions.map((tx) => (
+              {(accountTransactions.length > 0 ? currentAccountTransactions : currentTransactions).map((tx) => (
                 <tr
                   key={tx.id}
-                  onClick={() => {
-                    // Keep any existing click handler logic here
-                  }}
                   className="border-b hover:bg-gray-50 transition-all duration-150 transform hover:scale-[1.01] cursor-pointer"
                 >
                   <td className="py-3 px-4">
@@ -223,7 +453,7 @@ const TransactionHistory = ({
                   <td
                     className={`py-3 px-4 text-right font-semibold ${
                       tx.type === "WITHDRAWAL" || tx.type === "TRANSFER" || tx.type === "BILL_PAYMENT"
-                        ? "text-gray-800" // Changed from red-600 to gray-800
+                        ? "text-gray-800"
                         : "text-green-600"
                     }`}
                   >
@@ -233,12 +463,12 @@ const TransactionHistory = ({
                   </td>
 
                   <td className="py-3 px-4 text-right">
-                    ${tx.balanceAfter.toFixed(2)}
+                    ${tx.balanceAfter?.toFixed(2) || "0.00"}
                   </td>
                 </tr>
               ))}
 
-              {currentTransactions.length === 0 && (
+              {currentDisplayTransactions.length === 0 && (
                 <tr>
                   <td
                     colSpan="5"
@@ -249,7 +479,7 @@ const TransactionHistory = ({
                         <p className="mb-2">No transactions match your search criteria.</p>
                         <button
                           onClick={clearAllFilters}
-                          className="text-gray-800 hover:text-gray-900 font-semibold underline" // Changed from red-700 to gray-800
+                          className="text-gray-800 hover:text-gray-900 font-semibold underline"
                         >
                           Clear all filters and search
                         </button>
@@ -265,7 +495,7 @@ const TransactionHistory = ({
         </div>
 
         {/* Pagination controls */}
-        {filteredTransactions.length > transactionsPerPage && (
+        {filteredAccountTransactions.length > transactionsPerPage && (
           <div className="bg-gray-50 border-t px-4 py-3 flex items-center justify-between sm:px-6">
             <div className="flex-1 flex justify-between sm:hidden">
               <button
@@ -281,9 +511,9 @@ const TransactionHistory = ({
               </button>
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
+                disabled={currentPage === displayTotalPages}
                 className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-                  currentPage === totalPages
+                  currentPage === displayTotalPages
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                     : "bg-white text-gray-700 hover:bg-gray-50"
                 }`}
@@ -294,11 +524,11 @@ const TransactionHistory = ({
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">{indexOfFirstTransaction + 1}</span> to{" "}
+                  Showing <span className="font-medium">{indexOfFirst + 1}</span> to{" "}
                   <span className="font-medium">
-                    {Math.min(indexOfLastTransaction, filteredTransactions.length)}
+                    {Math.min(indexOfLast, filteredAccountTransactions.length)}
                   </span>{" "}
-                  of <span className="font-medium">{filteredTransactions.length}</span> results
+                  of <span className="font-medium">{filteredAccountTransactions.length}</span> results
                 </p>
               </div>
               <div>
@@ -317,13 +547,13 @@ const TransactionHistory = ({
                   </button>
                   
                   {/* Page numbers */}
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  {Array.from({ length: displayTotalPages }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
                       onClick={() => handlePageChange(page)}
                       className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                         currentPage === page
-                          ? "z-10 bg-blue-50 border-blue-500 text-blue-600" // Changed from red-50/red-500/red-600 to blue
+                          ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
                           : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
                       }`}
                     >
@@ -333,9 +563,9 @@ const TransactionHistory = ({
                   
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
+                    disabled={currentPage === displayTotalPages}
                     className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 text-sm font-medium ${
-                      currentPage === totalPages
+                      currentPage === displayTotalPages
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                         : "bg-white text-gray-500 hover:bg-gray-50"
                     }`}

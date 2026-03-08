@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 
+const API_BASE = "http://localhost:8080";
+
 const HRUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,28 +14,112 @@ const HRUsers = () => {
   const [showDeleteUserModal, setShowDeleteUserModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [showClearTransactionsModal, setShowClearTransactionsModal] = useState(false);
+  const [showCloseCreditAccountModal, setShowCloseCreditAccountModal] = useState(false);
+  const [showFreezeCreditAccountModal, setShowFreezeCreditAccountModal] = useState(false);
+  const [showUnfreezeCreditAccountModal, setShowUnfreezeCreditAccountModal] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [freezeReason, setFreezeReason] = useState('');
+
+  // Get sessionId from localStorage (needed for admin operations)
+  const getSessionId = () => {
+    try {
+      const userStr = localStorage.getItem('loggedInUser');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        return user.sessionId;
+      }
+      return null;
+    } catch (err) {
+      console.error('Error getting sessionId:', err);
+      return null;
+    }
+  };
 
   // Fetch users on component mount
   useEffect(() => {
     fetchUsers();
   }, []);
+  
+const fetchUsers = async () => {
+  setLoading(true);
+  setError(null);
+  try {
+    // Fetch regular users
+    const response = await fetch(`${API_BASE}/api/users`);
+    if (!response.ok) throw new Error('Failed to fetch users');
+    const data = await response.json();
+    
+    // For each user, fetch their credit accounts AND business accounts
+    const usersWithAllAccounts = await Promise.all(
+      data.map(async (user) => {
+        try {
+          // Fetch credit accounts
+          const creditAccounts = await fetchCreditAccounts(user.id);
+          
+          // Fetch business accounts separately to get the business IDs
+          const businessAccountsResponse = await fetch(`${API_BASE}/api/business/accounts/user/${user.id}`);
+          let businessAccounts = [];
+          if (businessAccountsResponse.ok) {
+            businessAccounts = await businessAccountsResponse.json();
+          }
+          
+          // Merge business accounts with regular accounts
+          const regularAccounts = user.accounts || [];
+          
+          // For each business account in the regular accounts, add the businessId
+          const enhancedRegularAccounts = regularAccounts.map(acc => {
+            if (acc.accountType === 'BUSINESS_CHECKING') {
+              // Find matching business account to get its ID
+              const matchingBusiness = businessAccounts.find(b => b.accountId === acc.id);
+              if (matchingBusiness) {
+                return {
+                  ...acc,
+                  businessAccountId: matchingBusiness.id // Add the business ID
+                };
+              }
+            }
+            return acc;
+          });
+          
+          return {
+            ...user,
+            accounts: enhancedRegularAccounts,
+            creditAccounts: creditAccounts || [],
+            businessAccounts: businessAccounts || [] // Keep for reference
+          };
+        } catch (err) {
+          console.error(`Error fetching accounts for user ${user.id}:`, err);
+          return {
+            ...user,
+            accounts: user.accounts || [],
+            creditAccounts: []
+          };
+        }
+      })
+    );
+    
+    setUsers(usersWithAllAccounts);
+    setHasMore(usersWithAllAccounts.length >= 20);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    setError(null);
+  // Fetch credit accounts using the same endpoint as customer dashboard
+  const fetchCreditAccounts = async (userId) => {
     try {
-      const response = await fetch('http://localhost:8080/api/users');
-      if (!response.ok) throw new Error('Failed to fetch users');
-      const data = await response.json();
-      setUsers(data);
-      setHasMore(data.length >= 20);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      const response = await fetch(`${API_BASE}/api/credit/accounts/user/${userId}`);
+      if (response.ok) {
+        return await response.json();
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching credit accounts:', error);
+      return [];
     }
   };
 
@@ -43,14 +129,32 @@ const HRUsers = () => {
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const response = await fetch(`http://localhost:8080/api/users?page=${nextPage}&limit=20`);
+      const response = await fetch(`${API_BASE}/api/users?page=${nextPage}&limit=20`);
       if (!response.ok) throw new Error('Failed to fetch more users');
       const newUsers = await response.json();
       
-      if (newUsers.length === 0) {
+      // Fetch credit accounts for new users
+      const newUsersWithCredit = await Promise.all(
+        newUsers.map(async (user) => {
+          try {
+            const creditAccounts = await fetchCreditAccounts(user.id);
+            return {
+              ...user,
+              creditAccounts: creditAccounts || []
+            };
+          } catch (err) {
+            return {
+              ...user,
+              creditAccounts: []
+            };
+          }
+        })
+      );
+      
+      if (newUsersWithCredit.length === 0) {
         setHasMore(false);
       } else {
-        setUsers(prev => [...prev, ...newUsers]);
+        setUsers(prev => [...prev, ...newUsersWithCredit]);
         setPage(nextPage);
       }
     } catch (err) {
@@ -70,12 +174,18 @@ const HRUsers = () => {
 
   // Calculate stats
   const totalUsers = users.length;
-  const totalAccounts = users.reduce((acc, u) => acc + (u.accounts?.length || 0), 0);
+  const totalAccounts = users.reduce((acc, u) => 
+    acc + (u.accounts?.length || 0) + (u.creditAccounts?.length || 0), 0
+  );
   const totalBalance = users.reduce((acc, u) => 
-    acc + (u.accounts?.reduce((sum, a) => sum + a.balance, 0) || 0), 0
+    acc + (u.accounts?.reduce((sum, a) => sum + a.balance, 0) || 0) + 
+    (u.creditAccounts?.reduce((sum, a) => sum + a.currentBalance, 0) || 0), 0
   );
   const businessAccounts = users.reduce((acc, u) => 
     acc + (u.accounts?.filter(a => a.accountType === 'BUSINESS_CHECKING').length || 0), 0
+  );
+  const creditAccounts = users.reduce((acc, u) => 
+    acc + (u.creditAccounts?.length || 0), 0
   );
 
   const handleViewUser = (user) => {
@@ -86,43 +196,54 @@ const HRUsers = () => {
   const handleDeleteAccount = async () => {
     if (!selectedAccount) return;
     
-    if (!window.confirm(`⚠️ PERMANENTLY DELETE account ending in ${selectedAccount.accountNumber.slice(-4)}? This action CANNOT be undone.`)) {
+    if (!window.confirm(`⚠️ PERMANENTLY DELETE account ending in ${selectedAccount.accountNumber?.slice(-4) || selectedAccount.maskedAccountNumber?.slice(-4)}? This action CANNOT be undone.`)) {
       return;
     }
 
     setActionLoading(true);
     try {
+      const sessionId = getSessionId();
+      
       // Determine which API to use based on account type
       const isBusiness = selectedAccount.accountType === 'BUSINESS_CHECKING';
-      const url = isBusiness 
-        ? `http://localhost:8080/api/business/accounts/${selectedAccount.id}`
-        : `http://localhost:8080/api/accounts/${selectedAccount.id}`;
-
-      const response = await fetch(url, {
+      const isCredit = selectedAccount.type === 'CREDIT' || selectedAccount.creditLimit !== undefined;
+      
+      let url;
+      let options = {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
-      });
+      };
+
+      if (isCredit) {
+        // ⭐ CORRECT: HR delete endpoint for credit accounts
+        url = `${API_BASE}/api/credit/hr/credit/accounts/${selectedAccount.id}`;
+        options.headers['sessionId'] = sessionId;
+      }
+        else if (isBusiness) {
+  // ⭐ FIXED: Use businessAccountId instead of account id
+  console.log('Business account being deleted:', selectedAccount); // ADD THIS
+  const businessId = selectedAccount.businessAccountId || selectedAccount.businessId || selectedAccount.id;
+  console.log('Using business ID:', businessId); // ADD THIS
+  url = `${API_BASE}/api/business/accounts/${businessId}`;
+
+
+      } else {
+        // ⭐ CORRECT: Delete regular account (checking/savings)
+        url = `${API_BASE}/api/accounts/${selectedAccount.id}`;
+      }
+
+      const response = await fetch(url, options);
 
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to delete account');
       }
 
-      // Update local state - remove the deleted account
-      setUsers(prevUsers => 
-        prevUsers.map(user => {
-          if (user.id === selectedUser.id) {
-            return {
-              ...user,
-              accounts: user.accounts?.filter(acc => acc.id !== selectedAccount.id)
-            };
-          }
-          return user;
-        })
-      );
-
+      // Refresh user data
+      await fetchUsers();
+      
       setShowDeleteAccountModal(false);
-      alert(`Account ending in ${selectedAccount.accountNumber.slice(-4)} has been permanently deleted.`);
+      alert(`Account has been permanently deleted.`);
     } catch (err) {
       alert(err.message);
     } finally {
@@ -131,27 +252,180 @@ const HRUsers = () => {
     }
   };
 
+  const handleFreezeCreditAccount = async () => {
+    if (!selectedAccount) return;
+    
+    if (!freezeReason.trim()) {
+      alert('Please provide a reason for freezing');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const sessionId = getSessionId();
+      
+      // ⭐ FIXED: Correct URL with double credit
+      const response = await fetch(`${API_BASE}/api/credit/admin/credit/accounts/${selectedAccount.id}/freeze`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'sessionId': sessionId
+        },
+        body: JSON.stringify({
+          reason: freezeReason
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to freeze account');
+      }
+
+      // Refresh user data
+      await fetchUsers();
+      
+      setShowFreezeCreditAccountModal(false);
+      setFreezeReason('');
+      alert(`Credit account has been frozen.`);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUnfreezeCreditAccount = async () => {
+    if (!selectedAccount) return;
+
+    setActionLoading(true);
+    try {
+      const sessionId = getSessionId();
+      
+      // ⭐ FIXED: Correct URL with double credit
+      const response = await fetch(`${API_BASE}/api/credit/admin/credit/accounts/${selectedAccount.id}/unfreeze`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'sessionId': sessionId
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to unfreeze account');
+      }
+
+      // Refresh user data
+      await fetchUsers();
+      
+      setShowUnfreezeCreditAccountModal(false);
+      alert(`Credit account has been unfrozen.`);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCloseCreditAccount = async () => {
+    if (!selectedAccount) return;
+
+    setActionLoading(true);
+    try {
+      const sessionId = getSessionId();
+      
+      // ⭐ FIXED: Correct URL with double credit
+      const response = await fetch(`${API_BASE}/api/credit/admin/credit/accounts/${selectedAccount.id}/close`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'sessionId': sessionId
+        },
+        body: JSON.stringify({
+          reason: 'Closed by HR'
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to close account');
+      }
+
+      // Refresh user data
+      await fetchUsers();
+      
+      setShowCloseCreditAccountModal(false);
+      alert(`Credit account has been closed.`);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Delete user with proper order and error handling
   const handleDeleteUser = async () => {
     if (!selectedUser) return;
     
-    const accountCount = selectedUser.accounts?.length || 0;
+    const accountCount = (selectedUser.accounts?.length || 0) + (selectedUser.creditAccounts?.length || 0);
     if (!window.confirm(`⚠️ PERMANENTLY DELETE USER ${selectedUser.firstName} ${selectedUser.lastName} with ${accountCount} account(s)? This action CANNOT be undone.`)) {
       return;
     }
 
     setActionLoading(true);
     try {
-      // TODO: Replace with actual user delete endpoint when available
-      // For now, we'll need to delete each account first
+      const sessionId = getSessionId();
+      
+      // FIRST: Delete credit accounts (if any) - using HR delete endpoint
+      if (selectedUser.creditAccounts && selectedUser.creditAccounts.length > 0) {
+        for (const account of selectedUser.creditAccounts) {
+          const response = await fetch(`${API_BASE}/api/credit/hr/credit/accounts/${account.id}`, {
+            method: 'DELETE',
+            headers: { 'sessionId': sessionId }
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Failed to delete credit account: ${error.error || 'Unknown error'}`);
+          }
+        }
+      }
+      
+      // SECOND: Delete business accounts first (they have foreign key constraints)
       if (selectedUser.accounts && selectedUser.accounts.length > 0) {
         for (const account of selectedUser.accounts) {
-          const isBusiness = account.accountType === 'BUSINESS_CHECKING';
-          const url = isBusiness 
-            ? `http://localhost:8080/api/business/accounts/${account.id}`
-            : `http://localhost:8080/api/accounts/${account.id}`;
-          
-          await fetch(url, { method: 'DELETE' });
+          if (account.accountType === 'BUSINESS_CHECKING') {
+            const response = await fetch(`${API_BASE}/api/business/accounts/${account.id}`, {
+              method: 'DELETE'
+            });
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(`Failed to delete business account: ${error.error || 'Unknown error'}`);
+            }
+          }
         }
+        
+        // THIRD: Delete regular accounts (checking/savings)
+        for (const account of selectedUser.accounts) {
+          if (account.accountType !== 'BUSINESS_CHECKING') {
+            const response = await fetch(`${API_BASE}/api/accounts/${account.id}`, {
+              method: 'DELETE'
+            });
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(`Failed to delete regular account: ${error.error || 'Unknown error'}`);
+            }
+          }
+        }
+      }
+      
+      // FINALLY: Delete the user
+      const userResponse = await fetch(`${API_BASE}/api/users/${selectedUser.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!userResponse.ok) {
+        const error = await userResponse.json();
+        throw new Error(`Failed to delete user: ${error.error || 'Unknown error'}`);
       }
       
       // Remove user from local state
@@ -170,18 +444,33 @@ const HRUsers = () => {
   const handleClearTransactions = async () => {
     if (!selectedAccount) return;
     
-    if (!window.confirm(`Clear ALL transaction history for account ending in ${selectedAccount.accountNumber.slice(-4)}? This action CANNOT be undone.`)) {
+    if (!window.confirm(`Clear ALL transaction history for account ending in ${selectedAccount.accountNumber?.slice(-4) || selectedAccount.maskedAccountNumber?.slice(-4)}? This action CANNOT be undone.`)) {
       return;
     }
 
     setActionLoading(true);
     try {
-      const url = `http://localhost:8080/api/transactions/clear/by-account-number?accountNumber=${selectedAccount.accountNumber}`;
-
-      const response = await fetch(url, {
+      const sessionId = getSessionId();
+      const isCredit = selectedAccount.type === 'CREDIT' || selectedAccount.creditLimit !== undefined;
+      
+      let url;
+      let options = {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
-      });
+      };
+
+    if (isCredit) {
+  // ⭐ FIXED: Added missing /credit in the path
+  url = `${API_BASE}/api/credit/admin/credit/accounts/${selectedAccount.id}/transactions/clear`;
+  options.headers['sessionId'] = sessionId;
+} 
+      else {
+        // Clear regular account transactions (checking/savings/business)
+        const accountNumber = selectedAccount.accountNumber || selectedAccount.maskedAccountNumber?.replace('****', '');
+        url = `${API_BASE}/api/transactions/clear/by-account-number?accountNumber=${accountNumber}`;
+      }
+
+      const response = await fetch(url, options);
 
       if (!response.ok) {
         const error = await response.json();
@@ -189,7 +478,7 @@ const HRUsers = () => {
       }
 
       setShowClearTransactionsModal(false);
-      alert(`Transaction history for account ending in ${selectedAccount.accountNumber.slice(-4)} has been cleared.`);
+      alert(`Transaction history has been cleared.`);
     } catch (err) {
       alert(err.message);
     } finally {
@@ -198,7 +487,8 @@ const HRUsers = () => {
     }
   };
 
-  const getAccountIcon = (type) => {
+  const getAccountIcon = (type, isCredit = false) => {
+    if (isCredit) return '💳';
     switch(type) {
       case 'CHECKING': return '🏦';
       case 'SAVINGS': return '💰';
@@ -278,8 +568,8 @@ const HRUsers = () => {
             <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>{formatCurrency(totalBalance)}</div>
           </div>
           <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-            <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px' }}>Business Accts</div>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>{businessAccounts}</div>
+            <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px' }}>Credit Cards</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>{creditAccounts}</div>
           </div>
         </div>
 
@@ -334,8 +624,9 @@ const HRUsers = () => {
           >
             {filteredUsers.map(user => {
               const fullName = `${user.firstName} ${user.lastName}`;
-              const accountCount = user.accounts?.length || 0;
-              const userBalance = user.accounts?.reduce((sum, a) => sum + a.balance, 0) || 0;
+              const accountCount = (user.accounts?.length || 0) + (user.creditAccounts?.length || 0);
+              const userBalance = (user.accounts?.reduce((sum, a) => sum + a.balance, 0) || 0) + 
+                                (user.creditAccounts?.reduce((sum, a) => sum + a.currentBalance, 0) || 0);
               
               return (
                 <div 
@@ -392,6 +683,20 @@ const HRUsers = () => {
                       <div style={{ fontWeight: '600', fontSize: '16px', color: '#10b981' }}>{formatCurrency(userBalance)}</div>
                     </div>
                   </div>
+                  
+                  {user.creditAccounts?.length > 0 && (
+                    <div style={{ marginBottom: '8px' }}>
+                      <span style={{ 
+                        padding: '2px 6px', 
+                        borderRadius: '4px', 
+                        fontSize: '10px', 
+                        background: '#6366f120', 
+                        color: '#6366f1' 
+                      }}>
+                        💳 {user.creditAccounts.length} Credit Card(s)
+                      </span>
+                    </div>
+                  )}
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ 
@@ -461,7 +766,7 @@ const HRUsers = () => {
 
             {/* Accounts */}
             <div style={{ padding: '20px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Accounts</h3>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>Regular Accounts</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {selectedUser.accounts?.map(account => {
                   const accountType = account.accountType === 'BUSINESS_CHECKING' ? 'BUSINESS' : account.accountType;
@@ -502,8 +807,109 @@ const HRUsers = () => {
                   );
                 })}
                 {(!selectedUser.accounts || selectedUser.accounts.length === 0) && (
-                  <div style={{ textAlign: 'center', padding: '40px', background: '#f9fafb', borderRadius: '6px', color: '#6b7280' }}>
-                    No accounts found for this user
+                  <div style={{ textAlign: 'center', padding: '20px', background: '#f9fafb', borderRadius: '6px', color: '#6b7280' }}>
+                    No regular accounts found
+                  </div>
+                )}
+              </div>
+
+              {/* Credit Accounts Section */}
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: '24px 0 16px 0' }}>Credit Accounts</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {selectedUser.creditAccounts?.map(account => (
+                  <div key={account.id} style={{ border: '1px solid #e5e7eb', borderRadius: '6px', padding: '16px', background: '#f0f9ff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '20px' }}>{getAccountIcon(null, true)}</span>
+                        <span style={{ fontWeight: '600' }}>CREDIT CARD</span>
+                        <span style={{ 
+                          padding: '2px 6px', 
+                          borderRadius: '4px', 
+                          fontSize: '11px', 
+                          background: account.status === 'ACTIVE' ? '#10b98120' : 
+                                     account.status === 'FROZEN' ? '#f59e0b20' : 
+                                     '#6b728020',
+                          color: account.status === 'ACTIVE' ? '#10b981' : 
+                                 account.status === 'FROZEN' ? '#f59e0b' : 
+                                 '#6b7280'
+                        }}>
+                          {account.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ fontFamily: 'monospace', fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>{account.maskedAccountNumber}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                      <div>
+                        <div style={{ fontSize: '11px', color: '#6b7280' }}>Limit</div>
+                        <div style={{ fontSize: '14px', fontWeight: '600' }}>{formatCurrency(account.creditLimit)}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '11px', color: '#6b7280' }}>Balance</div>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: account.currentBalance > 0 ? '#ef4444' : '#10b981' }}>
+                          {formatCurrency(account.currentBalance)}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Credit Account HR Actions */}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {account.status === 'ACTIVE' && (
+                        <button
+                          onClick={() => {
+                            setSelectedAccount(account);
+                            setShowFreezeCreditAccountModal(true);
+                          }}
+                          style={{ padding: '6px 12px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+                        >
+                          ❄️ Freeze
+                        </button>
+                      )}
+                      {account.status === 'FROZEN' && (
+                        <button
+                          onClick={() => {
+                            setSelectedAccount(account);
+                            setShowUnfreezeCreditAccountModal(true);
+                          }}
+                          style={{ padding: '6px 12px', background: '#10b981', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+                        >
+                          🔓 Unfreeze
+                        </button>
+                      )}
+                      {account.status !== 'CLOSED' && (
+                        <button
+                          onClick={() => {
+                            setSelectedAccount(account);
+                            setShowCloseCreditAccountModal(true);
+                          }}
+                          style={{ padding: '6px 12px', background: '#6b7280', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+                        >
+                          🔒 Close
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setSelectedAccount(account);
+                          setShowDeleteAccountModal(true);
+                        }}
+                        style={{ padding: '6px 12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+                      >
+                        🗑️ Delete
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedAccount(account);
+                          setShowClearTransactionsModal(true);
+                        }}
+                        style={{ padding: '6px 12px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+                      >
+                        🧹 Clear Transactions
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {(!selectedUser.creditAccounts || selectedUser.creditAccounts.length === 0) && (
+                  <div style={{ textAlign: 'center', padding: '20px', background: '#f9fafb', borderRadius: '6px', color: '#6b7280' }}>
+                    No credit accounts found
                   </div>
                 )}
               </div>
@@ -532,7 +938,7 @@ const HRUsers = () => {
           <div style={{ background: 'white', borderRadius: '8px', padding: '24px', width: '400px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', marginBottom: '12px' }}>⚠️ Permanently Delete Account</h3>
             <p style={{ color: '#6b7280', marginBottom: '16px' }}>
-              You are about to permanently delete {selectedAccount.accountType} account ending in {selectedAccount.accountNumber.slice(-4)}.
+              You are about to permanently delete {selectedAccount.accountType || 'Credit'} account ending in {selectedAccount.accountNumber?.slice(-4) || selectedAccount.maskedAccountNumber?.slice(-4)}.
             </p>
             
             <div style={{ background: '#fee2e2', padding: '12px', borderRadius: '4px', marginBottom: '16px' }}>
@@ -560,13 +966,119 @@ const HRUsers = () => {
         </div>
       )}
 
+      {/* Freeze Credit Account Modal */}
+      {showFreezeCreditAccountModal && selectedAccount && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: 'white', borderRadius: '8px', padding: '24px', width: '400px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', marginBottom: '12px' }}>Freeze Credit Account</h3>
+            <p style={{ color: '#6b7280', marginBottom: '16px' }}>
+              Freeze credit account ending in {selectedAccount.maskedAccountNumber?.slice(-4)}?
+            </p>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', color: '#374151', marginBottom: '4px' }}>Reason for freezing:</label>
+              <input
+                type="text"
+                value={freezeReason}
+                onChange={(e) => setFreezeReason(e.target.value)}
+                placeholder="e.g., Suspicious activity, Lost card, etc."
+                style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowFreezeCreditAccountModal(false);
+                  setFreezeReason('');
+                }}
+                style={{ padding: '8px 16px', background: '#e5e7eb', color: '#111827', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFreezeCreditAccount}
+                style={{ padding: '8px 16px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                disabled={actionLoading || !freezeReason.trim()}
+              >
+                {actionLoading ? 'Freezing...' : 'Freeze Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unfreeze Credit Account Modal */}
+      {showUnfreezeCreditAccountModal && selectedAccount && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: 'white', borderRadius: '8px', padding: '24px', width: '400px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', marginBottom: '12px' }}>Unfreeze Credit Account</h3>
+            <p style={{ color: '#6b7280', marginBottom: '16px' }}>
+              Unfreeze credit account ending in {selectedAccount.maskedAccountNumber?.slice(-4)}?
+            </p>
+            
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowUnfreezeCreditAccountModal(false)}
+                style={{ padding: '8px 16px', background: '#e5e7eb', color: '#111827', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUnfreezeCreditAccount}
+                style={{ padding: '8px 16px', background: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                disabled={actionLoading}
+              >
+                {actionLoading ? 'Unfreezing...' : 'Unfreeze Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Close Credit Account Modal */}
+      {showCloseCreditAccountModal && selectedAccount && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: 'white', borderRadius: '8px', padding: '24px', width: '400px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', marginBottom: '12px' }}>Close Credit Account</h3>
+            <p style={{ color: '#6b7280', marginBottom: '16px' }}>
+              Close credit account ending in {selectedAccount.maskedAccountNumber?.slice(-4)}?
+            </p>
+            
+            {selectedAccount.currentBalance > 0 && (
+              <div style={{ background: '#fee2e2', padding: '12px', borderRadius: '4px', marginBottom: '16px' }}>
+                <p style={{ color: '#b91c1c', fontSize: '13px', margin: 0 }}>
+                  ⚠️ Account has outstanding balance of {formatCurrency(selectedAccount.currentBalance)}. Close anyway?
+                </p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowCloseCreditAccountModal(false)}
+                style={{ padding: '8px 16px', background: '#e5e7eb', color: '#111827', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCloseCreditAccount}
+                style={{ padding: '8px 16px', background: '#6b7280', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                disabled={actionLoading}
+              >
+                {actionLoading ? 'Closing...' : 'Yes, Close Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete User Modal */}
       {showDeleteUserModal && selectedUser && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
           <div style={{ background: 'white', borderRadius: '8px', padding: '24px', width: '400px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', marginBottom: '12px' }}>⚠️ Permanently Delete User</h3>
             <p style={{ color: '#6b7280', marginBottom: '16px' }}>
-              You are about to permanently delete user <strong>{selectedUser.firstName} {selectedUser.lastName}</strong> with {selectedUser.accounts?.length || 0} account(s).
+              You are about to permanently delete user <strong>{selectedUser.firstName} {selectedUser.lastName}</strong> with {(selectedUser.accounts?.length || 0) + (selectedUser.creditAccounts?.length || 0)} account(s).
             </p>
             
             <div style={{ background: '#fee2e2', padding: '12px', borderRadius: '4px', marginBottom: '16px' }}>
@@ -601,7 +1113,7 @@ const HRUsers = () => {
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', marginBottom: '12px' }}>Clear Transaction History</h3>
             
             <p style={{ color: '#6b7280', marginBottom: '16px' }}>
-              Clear ALL transaction history for account ending in {selectedAccount.accountNumber.slice(-4)}?
+              Clear ALL transaction history for account ending in {selectedAccount.accountNumber?.slice(-4) || selectedAccount.maskedAccountNumber?.slice(-4)}? This action CANNOT be undone.
             </p>
             
             <div style={{ background: '#fee2e2', padding: '12px', borderRadius: '4px', marginBottom: '16px' }}>
@@ -650,8 +1162,8 @@ const HRUsers = () => {
           
           ::-webkit-scrollbar-thumb {
             background: #888;
-            border-radius: 4px;
-          }
+            borderRadius: '4px',
+          }}
           
           ::-webkit-scrollbar-thumb:hover {
             background: #555;

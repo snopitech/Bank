@@ -76,20 +76,18 @@ public class EmployeesController {  // 👈 Changed from EmployeeController to E
      * Employee login
      */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> credentials) {
-        try {
-            String email = credentials.get("email");
-            String password = credentials.get("password");
-            
-            EmployeeDTO employee = employeeService.login(email, password);
-            return ResponseEntity.ok(Map.of(
-                "message", "Login successful",
-                "employee", employee
-            ));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+public ResponseEntity<?> login(@RequestBody Map<String, String> credentials) {
+    try {
+        String email = credentials.get("email");
+        String password = credentials.get("password");
+        
+        Map<String, Object> loginResult = employeeService.login(email, password);
+        return ResponseEntity.ok(loginResult);
+        
+    } catch (RuntimeException e) {
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
     }
+}
 
     /**
      * Change employee password
@@ -277,6 +275,40 @@ public ResponseEntity<?> resetEmployeePassword(@PathVariable Long id) {
         return ResponseEntity.ok(Map.of(
             "message", "Password reset successful. Temporary password has been emailed to the employee.",
             "temporaryPassword", temporaryPassword // Remove this in production
+        ));
+    } catch (RuntimeException e) {
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+    }
+}
+
+/**
+ * Reset TOTP for an employee (HR only)
+ * POST /api/employees/admin/{id}/reset-totp
+ */
+@PostMapping("/admin/{id}/reset-totp")
+public ResponseEntity<?> resetEmployeeTOTP(@PathVariable Long id) {
+    try {
+        EmployeeDTO employee = employeeService.resetEmployeeTOTP(id);
+        return ResponseEntity.ok(Map.of(
+            "message", "TOTP has been reset for employee. They can now log in without 2FA.",
+            "employee", employee
+        ));
+    } catch (RuntimeException e) {
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+    }
+}
+
+/**
+ * Disable TOTP for an employee (HR only)
+ * POST /api/employees/admin/{id}/disable-totp
+ */
+@PostMapping("/admin/{id}/disable-totp")
+public ResponseEntity<?> disableEmployeeTOTP(@PathVariable Long id) {
+    try {
+        EmployeeDTO employee = employeeService.disableEmployeeTOTP(id);
+        return ResponseEntity.ok(Map.of(
+            "message", "TOTP has been disabled for employee.",
+            "employee", employee
         ));
     } catch (RuntimeException e) {
         return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

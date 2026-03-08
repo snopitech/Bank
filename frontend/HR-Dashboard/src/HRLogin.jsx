@@ -11,6 +11,14 @@ export default function HRLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  
+  // MFA States
+  const [step, setStep] = useState(1); // 1: email/password, 2: verify code
+  const [tempToken, setTempToken] = useState("");
+  const [code, setCode] = useState("");
+  const [resendDisabled, setResendDisabled] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+
   const [form, setForm] = useState({
     email: "",
     password: ""
@@ -29,14 +37,31 @@ export default function HRLogin() {
     setShowPassword(!showPassword);
   };
 
-  // Handle login submission
+  // Start resend timer
+  const startResendTimer = () => {
+    setResendDisabled(true);
+    setResendTimer(60);
+    
+    const timer = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setResendDisabled(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // Handle login submission (Step 1)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      const response = await fetch(`${API_BASE}/api/employees/login`, {
+      const response = await fetch(`${API_BASE}/api/hr/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -50,6 +75,44 @@ export default function HRLogin() {
         throw new Error(data.error || "Invalid email or password");
       }
 
+      // Store temp token and move to MFA step
+      setTempToken(data.tempToken);
+      setStep(2);
+      startResendTimer();
+
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle code verification (Step 2)
+  const handleVerify = async () => {
+    if (!code || code.length !== 6) {
+      setError("Please enter a valid 6-digit code");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${API_BASE}/api/hr/auth/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tempToken: tempToken,
+          code: code
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Invalid verification code");
+      }
+
       // Check if user has HR permissions (manageEmployees: true)
       const employee = data.employee;
       const hasHRAccess = employee.permissions?.manageEmployees === true;
@@ -60,9 +123,42 @@ export default function HRLogin() {
 
       // Store HR user data
       localStorage.setItem("hrUser", JSON.stringify(employee));
+      localStorage.setItem("hrToken", data.token);
       
-      // Redirect to HR dashboard
-      navigate("/");
+      // Redirect to dashboard
+      navigate("/dashboard");
+
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle resend code
+  const handleResend = async () => {
+    if (resendDisabled) return;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${API_BASE}/api/hr/auth/resend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tempToken: tempToken
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to resend code");
+      }
+
+      // Reset timer
+      startResendTimer();
 
     } catch (err) {
       setError(err.message);
@@ -194,6 +290,15 @@ export default function HRLogin() {
       alignItems: 'center',
       gap: '8px'
     },
+    infoBox: {
+      background: '#ebf8ff',
+      border: '1px solid #90cdf4',
+      borderRadius: '8px',
+      padding: '16px',
+      marginBottom: '20px',
+      fontSize: '14px',
+      color: '#2c5282'
+    },
     formGroup: {
       marginBottom: '20px'
     },
@@ -214,6 +319,12 @@ export default function HRLogin() {
       borderRadius: '8px',
       fontSize: '14px',
       boxSizing: 'border-box'
+    },
+    codeInput: {
+      textAlign: 'center',
+      fontSize: '24px',
+      letterSpacing: '8px',
+      fontFamily: 'monospace'
     },
     passwordToggle: {
       position: 'absolute',
@@ -236,9 +347,50 @@ export default function HRLogin() {
       cursor: 'pointer',
       marginTop: '10px'
     },
+    verifyButton: {
+      width: '100%',
+      background: '#10b981',
+      color: 'white',
+      padding: '14px',
+      borderRadius: '8px',
+      border: 'none',
+      fontWeight: '600',
+      fontSize: '16px',
+      cursor: 'pointer',
+      marginTop: '10px'
+    },
+    secondaryButton: {
+      width: '100%',
+      background: '#e5e7eb',
+      color: '#333',
+      padding: '14px',
+      borderRadius: '8px',
+      border: 'none',
+      fontWeight: '500',
+      fontSize: '14px',
+      cursor: 'pointer',
+      marginTop: '10px'
+    },
     disabledButton: {
       background: '#999',
       cursor: 'not-allowed'
+    },
+    resendSection: {
+      marginTop: '20px',
+      textAlign: 'center'
+    },
+    resendButton: {
+      background: 'none',
+      border: 'none',
+      color: '#667eea',
+      cursor: 'pointer',
+      fontSize: '14px',
+      textDecoration: 'underline'
+    },
+    resendDisabled: {
+      color: '#a0aec0',
+      cursor: 'not-allowed',
+      textDecoration: 'none'
     },
     backToLogin: {
       textAlign: 'center',
@@ -301,7 +453,7 @@ export default function HRLogin() {
         </div>
 
         <div style={styles.headerButtons}>
-          {/* Back to Admin Home Button - NEW */}
+          {/* Back to Admin Home Button */}
           <button 
             onClick={handleBackToAdmin}
             style={styles.homeButton}
@@ -310,10 +462,12 @@ export default function HRLogin() {
             Back to Admin Home
           </button>
 
-          {/* Create HR Account Button - EXISTING */}
+          {/* Create HR Account Button */}
           <button 
             onClick={() => {
               setShowCreateHR(!showCreateHR);
+              setStep(1);
+              setCode("");
               setError("");
             }}
             style={styles.createHRButton}
@@ -338,61 +492,130 @@ export default function HRLogin() {
             /* Use your exact HRCreateEmployee component */
             <HRCreateEmployee onSuccess={handleCreationSuccess} />
           ) : (
-            /* Login Form */
-            <div>
-              <div style={styles.loginHeader}>
-                <h2 style={styles.loginTitle}>HR Portal Login</h2>
-                <p style={styles.loginSubtitle}>Sign in with your employee credentials</p>
-              </div>
-
-              <form onSubmit={handleSubmit}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Email Address</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    placeholder="hr@snopitech.com"
-                    style={styles.input}
-                    required
-                  />
+            /* Login or MFA Verification */
+            step === 1 ? (
+              /* Step 1: Email and Password */
+              <div>
+                <div style={styles.loginHeader}>
+                  <h2 style={styles.loginTitle}>HR Portal Login</h2>
+                  <p style={styles.loginSubtitle}>Sign in with your employee credentials</p>
                 </div>
 
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Password</label>
-                  <div style={styles.inputContainer}>
+                <form onSubmit={handleSubmit}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Email Address</label>
                     <input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      value={form.password}
+                      type="email"
+                      name="email"
+                      value={form.email}
                       onChange={handleChange}
-                      placeholder="Enter your password"
+                      placeholder="hr@snopitech.com"
                       style={styles.input}
                       required
                     />
-                    <button
-                      type="button"
-                      onClick={togglePasswordVisibility}
-                      style={styles.passwordToggle}
-                    >
-                      {showPassword ? "👁️" : "👁️‍🗨️"}
-                    </button>
                   </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Password</label>
+                    <div style={styles.inputContainer}>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        name="password"
+                        value={form.password}
+                        onChange={handleChange}
+                        placeholder="Enter your password"
+                        style={styles.input}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={togglePasswordVisibility}
+                        style={styles.passwordToggle}
+                      >
+                        {showPassword ? "👁️" : "👁️‍🗨️"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      ...styles.loginButton,
+                      ...(loading ? styles.disabledButton : {})
+                    }}
+                  >
+                    {loading ? 'Verifying...' : 'Sign In'}
+                  </button>
+                </form>
+              </div>
+            ) : (
+              /* Step 2: MFA Verification */
+              <div>
+                <div style={styles.loginHeader}>
+                  <h2 style={styles.loginTitle}>Verification Required</h2>
+                  <p style={styles.loginSubtitle}>Enter the 6-digit code sent to your email</p>
+                </div>
+
+                <div style={styles.infoBox}>
+                  <strong>📧 Code sent to:</strong>
+                  <p style={{ marginTop: '5px', fontSize: '13px' }}>
+                    {form.email} (expires in 5 minutes)
+                  </p>
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Verification Code</label>
+                  <input
+                    type="text"
+                    maxLength="6"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    style={{
+                      ...styles.input,
+                      ...styles.codeInput
+                    }}
+                  />
                 </div>
 
                 <button
-                  type="submit"
-                  disabled={loading}
+                  onClick={handleVerify}
+                  disabled={loading || code.length !== 6}
                   style={{
-                    ...styles.loginButton,
-                    ...(loading ? styles.disabledButton : {})
+                    ...styles.verifyButton,
+                    ...(loading || code.length !== 6 ? styles.disabledButton : {})
                   }}
                 >
-                  {loading ? 'Verifying access...' : 'Access HR Portal'}
+                  {loading ? 'Verifying...' : 'Verify & Login'}
                 </button>
-              </form>
-            </div>
+
+                <div style={styles.resendSection}>
+                  <button
+                    onClick={handleResend}
+                    disabled={resendDisabled || loading}
+                    style={{
+                      ...styles.resendButton,
+                      ...(resendDisabled ? styles.resendDisabled : {})
+                    }}
+                  >
+                    {resendDisabled 
+                      ? `Resend code in ${resendTimer}s` 
+                      : 'Resend verification code'}
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setStep(1);
+                    setCode("");
+                  }}
+                  style={styles.secondaryButton}
+                >
+                  ← Back to Login
+                </button>
+              </div>
+            )
           )}
         </div>
       </div>

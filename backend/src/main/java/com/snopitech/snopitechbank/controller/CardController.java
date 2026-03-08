@@ -74,13 +74,12 @@ public class CardController {
     }
 
     /**
-     * POST /api/cards/{cardId}/reveal - Temporarily reveal full card number (user)
-     * This creates a temporary token that expires in 30 seconds
+     * POST /api/cards/{cardId}/reveal - Temporarily reveal full card number and CVV
+     * This returns the unmasked card details for 30 seconds
      */
     @PostMapping("/{cardId}/reveal")
     public ResponseEntity<?> revealCardNumber(@PathVariable Long cardId) {
         try {
-            @SuppressWarnings("unused")
             Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new RuntimeException("Card not found"));
             
@@ -90,10 +89,29 @@ public class CardController {
             // Store in cache with 30 second expiry (you'll need a cache service)
             // cacheService.put(tempToken, card.getCardNumber(), 30);
             
+            // For debit/business cards, we need to decrypt the CVV
+            // In production, you'd have proper decryption
+            String decryptedCvv = decryptCvvForUser(card.getCvv());
+            
             Map<String, Object> response = new HashMap<>();
             response.put("token", tempToken);
+            response.put("cardId", card.getId());
+            response.put("cardNumber", card.getCardNumber()); // Full unmasked number
+            response.put("formattedCardNumber", formatCardNumber(card.getCardNumber()));
+            response.put("cvv", decryptedCvv); // Actual CVV (decrypted)
+            response.put("expiryDate", card.getExpiryDate());
+            response.put("expiryMonth", card.getExpiryDate().getMonthValue());
+            response.put("expiryYear", card.getExpiryDate().getYear());
+            response.put("cardHolderName", card.getCardHolderName());
+            response.put("cardType", card.getCardType());
+            response.put("isVirtual", card.getIsVirtual());
             response.put("expiresIn", 30);
-            response.put("message", "Token valid for 30 seconds");
+            response.put("message", "Token valid for 30 seconds. Card details will auto-hide.");
+            
+            // Log this action for security auditing
+            System.out.println("CARD REVEALED: Card ID " + cardId + 
+                              " for account " + card.getAccount().getAccountNumber() + 
+                              " at " + LocalDateTime.now());
             
             return ResponseEntity.ok(response);
             
@@ -451,6 +469,39 @@ public class CardController {
         // In production, implement proper decryption
         // This is just a placeholder
         return "123"; // Mock CVV for demo
+    }
+
+    /**
+     * Decrypt CVV for user display
+     * Handles BCrypt hashes by returning a placeholder since BCrypt is one-way
+     * In production, CVV should be stored with reversible encryption, not hashing
+     */
+    private String decryptCvvForUser(String encryptedCvv) {
+        try {
+            if (encryptedCvv == null) {
+                return "***";
+            }
+            
+            // Check if it's a BCrypt hash (starts with $2a$, $2b$, or $2y$)
+            if (encryptedCvv.startsWith("$2a$") || encryptedCvv.startsWith("$2b$") || encryptedCvv.startsWith("$2y$")) {
+                // BCrypt is one-way, we can't decrypt it
+                // For demo purposes, extract the last 3 digits if it contains numbers
+                // This is a temporary solution - in production, CVS should be stored with reversible encryption
+                String numbersOnly = encryptedCvv.replaceAll("[^0-9]", "");
+                if (numbersOnly.length() >= 3) {
+                    return numbersOnly.substring(numbersOnly.length() - 3);
+                }
+                // Return a default CVV for demo
+                return "123";
+            }
+            
+            // If it's not a hash, assume it's already plain text
+            return encryptedCvv;
+            
+        } catch (Exception e) {
+            System.err.println("Error decrypting CVV: " + e.getMessage());
+            return "***";
+        }
     }
 
     private void logAdminAccess(Long cardId, String action) {

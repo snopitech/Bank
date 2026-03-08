@@ -75,44 +75,50 @@ const HRDangerZone = () => {
     }
   };
 
-  const handleDeleteUser = async () => {
-    if (!selectedUser || confirmText !== 'PERMANENTLY DELETE') return;
+ const handleDeleteUser = async () => {
+  if (!selectedUser || confirmText !== 'PERMANENTLY DELETE') return;
+  
+  setLoading(true);
+  setActionResult(null);
+  
+  try {
+    console.log("🔍 Attempting to delete user ID:", selectedUser.id);
     
-    setLoading(true);
-    setActionResult(null);
+    const response = await fetch(`http://localhost:8080/api/users/${selectedUser.id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    console.log("📡 Response status:", response.status);
     
-    try {
-      const response = await fetch(`http://localhost:8080/api/users/${selectedUser.id}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' }
-      });
+    const errorText = await response.text();
+    console.log("📝 Response body:", errorText);
 
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || 'Failed to delete user');
-      }
-
-      setActionResult({
-        type: 'success',
-        message: `✅ User ${selectedUser.firstName} ${selectedUser.lastName} has been permanently deleted.`
-      });
-      
-      // Remove deleted user from list
-      setUsers(prev => prev.filter(u => u.id !== selectedUser.id));
-      setShowDeleteUserModal(false);
-      setSelectedUser(null);
-      setSearchTerm('');
-      setConfirmText('');
-    } catch (err) {
-      setActionResult({
-        type: 'error',
-        message: `❌ Error: ${err.message}`
-      });
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      throw new Error(errorText || 'Failed to delete user');
     }
-  };
 
+    setActionResult({
+      type: 'success',
+      message: `✅ User ${selectedUser.firstName} ${selectedUser.lastName} has been permanently deleted.`
+    });
+    
+    // Remove deleted user from list
+    setUsers(prev => prev.filter(u => u.id !== selectedUser.id));
+    setShowDeleteUserModal(false);
+    setSelectedUser(null);
+    setSearchTerm('');
+    setConfirmText('');
+  } catch (err) {
+    console.error("❌ Delete error:", err);
+    setActionResult({
+      type: 'error',
+      message: `❌ Error: ${err.message}`
+    });
+  } finally {
+    setLoading(false);
+  }
+};
   const styles = {
     container: {
       minHeight: '100vh',

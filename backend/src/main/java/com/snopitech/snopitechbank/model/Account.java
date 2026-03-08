@@ -52,6 +52,7 @@ private Boolean disabled = false;
 
 @Column(name = "disabled_date")
 private LocalDateTime disabledDate;
+
     public Account() {}
 
     public Account(String ownerName, double balance, String accountType) {
@@ -120,7 +121,7 @@ private LocalDateTime disabledDate;
     this.nickname = nickname;
     }
     public Boolean isClosed() {
-    return closed;
+    return closed != null ? closed : false;
     }
 
     public void setClosed(Boolean closed) {
@@ -143,7 +144,7 @@ private LocalDateTime disabledDate;
     this.closureReason = closureReason;
    }
    public Boolean isDisabled() {
-    return disabled;
+    return disabled != null ? disabled : false;
 }
 
 public void setDisabled(Boolean disabled) {

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import HeaderTest from "./components/HeaderTest";
 import Header from "./components/Header";
 import AccountCard from "./components/AccountCard";
-import BusinessAccountCard from "./components/BusinessAccountCard.jsx"; // New component
+import BusinessAccountCard from "./components/BusinessAccountCard.jsx";
+import CreditAccountCard from "./components/CreditAccountCard.jsx";
 import SpendingAnalytics from "./components/SpendingAnalytics";
 import TransactionHistory from "./components/TransactionHistory";
 import RealTimeStatusBar from "./components/RealTimeStatusBar";
@@ -14,13 +15,18 @@ import LoadingScreen from "./components/LoadingScreen";
 import TransferModal from "./components/TransferModal";
 import InternalTransferModal from "./components/InternalTransferModal";
 import PayBillsModal from "./components/PayBillsModal";
+import CreditCardPaymentModal from "./components/CreditCardPaymentModal";
 import TransactionDetailsModal from "./components/TransactionDetailsModal";
 import AIFinancialAssistant from "./components/AIFinancialAssistant";
 import { useContactModal } from "./ContactModalContext";
 import ContactInlineForm from "./ContactInlineForm";
+import LoanAccountCard from "./components/LoanAccountCard";
+import { useNavigate } from 'react-router-dom';
+
 const API_BASE = "http://localhost:8080";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   // ⭐⭐⭐ Contact Modal Hook - UPDATED
   const { toggleInlineForm, isInlineExpanded, inlineUserData, inlinePresetCategory, inlinePresetSubject } = useContactModal();
   
@@ -30,10 +36,13 @@ export default function Dashboard() {
   const [showInternalTransferModal, setShowInternalTransferModal] = useState(false);
   const [showPayBillsModal, setShowPayBillsModal] = useState(false);
 
-  const [checkingAccount, setCheckingAccount] = useState(null);
-  const [savingsAccount, setSavingsAccount] = useState(null);
-  const [businessAccounts, setBusinessAccounts] = useState([]);
-  const [transactions, setTransactions] = useState([]);
+ const [checkingAccount, setCheckingAccount] = useState(null);
+ const [savingsAccount, setSavingsAccount] = useState(null);
+ const [businessAccounts, setBusinessAccounts] = useState([]);
+ const [creditAccounts, setCreditAccounts] = useState([]);
+ const [loanAccounts, setLoanAccounts] = useState([]); // Add this line
+ const [increaseRequests, setIncreaseRequests] = useState([]);
+ const [transactions, setTransactions] = useState([]);
 
   // ⭐ Account switcher
   const [selectedAccount, setSelectedAccount] = useState("CHECKING");
@@ -41,7 +50,8 @@ export default function Dashboard() {
   // ⭐ Transaction details modal
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
-
+  const [showCreditPaymentModal, setShowCreditPaymentModal] = useState(false);
+  const [selectedCreditAccount, setSelectedCreditAccount] = useState(null);
   // ⭐ Filters
   const [filterType, setFilterType] = useState("ALL");
   const [filterStartDate, setFilterStartDate] = useState("");
@@ -154,22 +164,100 @@ export default function Dashboard() {
     return await res.json();
   };
 
-  // ⭐ NEW: Fetch business accounts
-  const fetchBusinessAccounts = async () => {
-    try {
-      const user = JSON.parse(localStorage.getItem("loggedInUser"));
-      if (!user?.id) return [];
-      
-      const response = await fetch(`${API_BASE}/api/business/accounts/user/${user.id}`);
-      if (!response.ok) return [];
-      
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Error fetching business accounts:', error);
-      return [];
-    }
-  };
+ const fetchBusinessAccounts = async () => {
+  try {
+    const user = JSON.parse(localStorage.getItem("loggedInUser"));
+    if (!user?.id) return [];
+    
+    const response = await fetch(`${API_BASE}/api/business/accounts/user/${user.id}`);
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    
+    // Transform to ensure balance field exists
+    return data.map(business => ({
+      ...business,
+      balance: business.accountBalance || 0, // Map accountBalance to balance
+      accountType: "BUSINESS_CHECKING"
+    }));
+  } catch (error) {
+    console.error('Error fetching business accounts:', error);
+    return [];
+  }
+};
+
+const fetchCreditAccounts = async () => {
+  try {
+    const user = JSON.parse(localStorage.getItem("loggedInUser"));
+    if (!user?.id) return [];
+    
+    const response = await fetch(`${API_BASE}/api/credit/accounts/user/${user.id}`);
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    console.log('Raw credit accounts:', data); // Check what the API returns
+    
+    // Transform to ensure balance field exists
+    const transformed = data.map(credit => ({
+      id: credit.id,
+      accountNumber: credit.accountNumber,
+      accountType: "CREDIT",
+      balance: credit.currentBalance || 0,
+      currentBalance: credit.currentBalance,
+      creditLimit: credit.creditLimit,
+      cards: credit.cards,
+      maskedAccountNumber: credit.maskedAccountNumber,
+      status: credit.status,
+      active: credit.active,
+      increaseCount: credit.increaseCount || 0  // ADD THIS LINE
+    }));
+    
+    console.log('Transformed credit accounts:', transformed);
+    transformed.forEach(acc => {
+      console.log(`Account ${acc.id}: status=${acc.status}, active=${acc.active}`);
+    });
+    
+    return transformed;
+  } catch (error) {
+    console.error('Error fetching credit accounts:', error);
+    return [];
+  }
+};
+ // Fetch credit increase requests for the user
+const fetchCreditIncreaseRequests = async () => {
+  try {
+    const user = JSON.parse(localStorage.getItem("loggedInUser"));
+    if (!user?.id) return [];
+    
+    const response = await fetch(`${API_BASE}/api/credit/increase-requests/user/${user.id}`);
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching increase requests:', error);
+    return [];
+  }
+};
+
+const fetchLoanAccounts = async () => {
+  try {
+    const user = JSON.parse(localStorage.getItem("loggedInUser"));
+    if (!user?.id) return [];
+    
+    const response = await fetch(`${API_BASE}/api/loan/accounts`, {
+      headers: { 'sessionId': user.sessionId }
+    });
+    
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching loan accounts:', error);
+    return [];
+  }
+};
 
   // ✅ Get transactions for logged-in user by user ID
   const fetchTransactions = async () => {
@@ -210,6 +298,160 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error fetching transactions:', error);
       return [];
+    }
+  };
+
+/**
+ * Handle opening credit card payment modal
+ */
+const handleOpenCreditPayment = (account) => {
+  setSelectedCreditAccount(account);
+  setShowCreditPaymentModal(true);
+};
+
+  // ==================== CREDIT CARD ACTION FUNCTIONS ====================
+
+  /**
+   * Handle credit card payment
+   * POST /api/credit/accounts/{id}/payments?userId={userId}
+   */
+  const handleCreditPayment = async (account) => {
+    const amount = prompt(`Enter payment amount for credit account ending in ${account.maskedAccountNumber?.slice(-4)}:`);
+    if (!amount) return;
+    
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/credit/accounts/${account.id}/payments?userId=${user.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: numAmount })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Payment failed');
+      }
+
+      const data = await response.json();
+      alert(`Payment of $${numAmount} successful! New balance: $${data.newBalance}`);
+      refreshDashboard(); // Refresh to show updated balance
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  /**
+   * Handle credit limit increase request
+   * POST /api/credit/accounts/{accountId}/increase-request?userId={userId}
+   */
+  const handleCreditIncreaseRequest = async (account) => {
+    const nextLimit = account.increaseCount === 1 ? 10000 :
+                     account.increaseCount === 2 ? 15000 :
+                     account.increaseCount === 3 ? 20000 : null;
+    
+    if (!nextLimit) {
+      alert('Maximum limit already reached');
+      return;
+    }
+
+    const reason = prompt(`Request increase to $${nextLimit.toLocaleString()}?\n\nPlease provide a reason:`);
+    if (!reason) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/credit/accounts/${account.id}/increase-request?userId=${user.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          requestedLimit: nextLimit,
+          reason: reason 
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Request failed');
+      }
+
+      const data = await response.json();
+      alert(`Increase request submitted! Request ID: ${data.requestId}`);
+      refreshDashboard(); // Refresh to show the new request
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  /**
+   * Handle view cards - Navigate to Manage Cards page
+   */
+  const handleCreditViewCards = (account) => {
+    // Navigate to the Accounts page with credit tab active
+    // You can use window.location or React Router
+    window.location.href = '/accounts?tab=credit';
+  };
+
+  /**
+   * Handle view transactions
+   * GET /api/credit/accounts/{accountId}/transactions?userId={userId}
+   */
+  const handleCreditViewTransactions = async (account) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/credit/accounts/${account.id}/transactions?userId=${user.id}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch transactions');
+      }
+
+      const transactions = await response.json();
+      
+      if (transactions.length === 0) {
+        alert('No transactions found for this credit account');
+        return;
+      }
+
+      // Format and display transactions
+      let message = `📊 Recent Transactions\n\n`;
+      transactions.slice(0, 5).forEach(tx => {
+        const date = new Date(tx.timestamp).toLocaleDateString();
+        message += `${date} - ${tx.type}: $${tx.amount} ${tx.merchant ? `at ${tx.merchant}` : ''}\n`;
+      });
+      
+      if (transactions.length > 5) {
+        message += `\n... and ${transactions.length - 5} more`;
+      }
+      
+      alert(message);
+      
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  /**
+   * Handle reveal account number
+   * POST /api/credit/accounts/{id}/reveal?userId={userId}
+   */
+  const handleCreditRevealAccount = async (account) => {
+    // This will be handled inside CreditAccountCard component
+    // But we need to pass a function that calls the API
+    try {
+      const response = await fetch(`${API_BASE}/api/credit/accounts/${account.id}/reveal?userId=${user.id}`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reveal account number');
+      }
+
+      const data = await response.json();
+      return data.accountNumber; // Return the full account number
+    } catch (err) {
+      alert(err.message);
+      return null;
     }
   };
 
@@ -315,19 +557,36 @@ export default function Dashboard() {
       const oldCheckingBalance = checkingAccount?.balance || checkingMeta?.balance || 0;
       const oldSavingsBalance = savingsAccount?.balance || savingsMeta?.balance || 0;
       
-      const [newChecking, newSavings, newTransactions, newBusinessAccounts] = await Promise.all([
-        fetchChecking(),
-        fetchSavings(),
-        fetchTransactions(),
-        fetchBusinessAccounts()
-      ]);
-      
+  const [newChecking, newSavings, newTransactions, newBusinessAccounts, newCreditAccounts, newIncreaseRequests, newLoanAccounts] = await Promise.all([
+  fetchChecking(),
+  fetchSavings(),
+  fetchTransactions(),
+  fetchBusinessAccounts(),
+  fetchCreditAccounts(),
+  fetchCreditIncreaseRequests(),
+  fetchLoanAccounts() // Add this
+]);
+
+  console.log('Loan accounts fetched:', newLoanAccounts); // ADD THIS LINE
+
+setCheckingAccount(newChecking);
+setSavingsAccount(newSavings);
+setTransactions(newTransactions);
+setBusinessAccounts(newBusinessAccounts);
+setCreditAccounts(newCreditAccounts);
+setIncreaseRequests(newIncreaseRequests);
+setLoanAccounts(newLoanAccounts); // Make sure this line exists
+setLastUpdated(new Date());
+    
       setCheckingAccount(newChecking);
       setSavingsAccount(newSavings);
       setTransactions(newTransactions);
       setBusinessAccounts(newBusinessAccounts);
+      setCreditAccounts(newCreditAccounts);
+      setIncreaseRequests(newIncreaseRequests); 
+      setLoanAccounts(newLoanAccounts);     
       setLastUpdated(new Date());
-      
+     
       const newCheckingBalance = newChecking?.balance || checkingMeta?.balance || 0;
       const newSavingsBalance = newSavings?.balance || savingsMeta?.balance || 0;
       
@@ -496,8 +755,9 @@ export default function Dashboard() {
     } else if (accountType === "SAVINGS") {
       return savingsAccount?.balance || savingsMeta?.balance || 0;
     } else if (accountType === "BUSINESS") {
-      // Handle business accounts - return first business account balance
       return businessAccounts[0]?.accountBalance || 0;
+    } else if (accountType === "CREDIT") {
+      return creditAccounts[0]?.currentBalance || 0;
     }
     return 0;
   };
@@ -515,6 +775,8 @@ export default function Dashboard() {
       return savingsAccount?.nickname || savingsMeta?.nickname || "Everyday Savings";
     } else if (accountType === "BUSINESS") {
       return businessAccounts[0]?.businessName || "Business Account";
+    } else if (accountType === "CREDIT") {
+      return "Credit Card";
     }
     return "Account";
   };
@@ -529,9 +791,12 @@ export default function Dashboard() {
       accountNumber = savingsAccount?.accountNumber || savingsMeta?.accountNumber;
     } else if (accountType === "BUSINESS") {
       accountNumber = businessAccounts[0]?.accountNumber;
+    } else if (accountType === "CREDIT") {
+      accountNumber = creditAccounts[0]?.maskedAccountNumber || creditAccounts[0]?.accountNumber;
     }
     
     if (!accountNumber) return "••••••";
+    if (accountNumber.includes("****")) return accountNumber;
     return `••••${accountNumber.slice(-4)}`;
   };
 
@@ -584,86 +849,135 @@ export default function Dashboard() {
       return txDate >= startDate && txDate <= endDate;
     });
   };
-
   // ⭐⭐ NEW: Get transactions for account type
   const getTransactionsForAccount = (accountType) => {
     return transactions.filter(tx => tx.accountType === accountType);
   };
 
-  // ⭐⭐ UPDATED: Download statement for specific account - USING BACKEND API
-  const downloadCSVStatement = async (accountType, period) => {
-    try {
-      setDownloadingStatement(true);
+ // ⭐⭐ UPDATED: Download statement for specific account - USING BACKEND API
+const downloadCSVStatement = async (accountType, period) => {
+  try {
+    setDownloadingStatement(true);
+    
+    let accountId;
+    if (accountType === "CHECKING") {
+      accountId = checkingAccount?.id || checkingMeta?.id;
+    } else if (accountType === "SAVINGS") {
+      accountId = savingsAccount?.id || savingsMeta?.id;
+    } else if (accountType === "BUSINESS") {
+      accountId = businessAccounts[0]?.accountId;
+    } else if (accountType === "CREDIT") {
+      accountId = creditAccounts[0]?.id;
+    }
+    
+    if (!accountId) {
+      alert('Account not found');
+      setDownloadingStatement(false);
+      return;
+    }
+
+    // For credit cards, use the credit transaction endpoint
+    if (accountType === "CREDIT") {
+      console.log('📥 Fetching credit transactions for account:', accountId);
       
-      let accountId;
-      if (accountType === "CHECKING") {
-        accountId = checkingAccount?.id || checkingMeta?.id;
-      } else if (accountType === "SAVINGS") {
-        accountId = savingsAccount?.id || savingsMeta?.id;
-      } else if (accountType === "BUSINESS") {
-        accountId = businessAccounts[0]?.accountId; // Use the linked account ID
+      const response = await fetch(
+        `${API_BASE}/api/credit/accounts/${accountId}/transactions`
+      );
+      
+      console.log('📊 Credit response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Credit fetch error:', errorText);
+        throw new Error('Failed to fetch credit transactions');
       }
       
-      if (!accountId) {
-        alert('Account not found');
+      const transactions = await response.json();
+      console.log('💳 Credit transactions received:', transactions);
+      
+      if (!transactions || transactions.length === 0) {
+        alert('No transactions found for this credit card');
         setDownloadingStatement(false);
         return;
       }
       
-      const today = new Date();
-      let year = today.getFullYear();
-      let month = today.getMonth() + 1;
+      // Create CSV from transactions
+      let csvContent = "Date,Description,Amount,Type\n";
+      transactions.forEach(tx => {
+        const date = new Date(tx.timestamp).toLocaleDateString();
+        csvContent += `${date},${tx.description || ''},${tx.amount},${tx.type}\n`;
+      });
       
-      if (period === 'lastMonth') {
-        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        year = lastMonth.getFullYear();
-        month = lastMonth.getMonth() + 1;
-      } else if (period === 'currentMonth') {
-        year = today.getFullYear();
-        month = today.getMonth() + 1;
-      } else if (period === '30days') {
-        year = today.getFullYear();
-        month = today.getMonth() + 1;
-      } else if (period === 'custom' && filterStartDate && filterEndDate) {
-        const start = new Date(filterStartDate);
-        year = start.getFullYear();
-        month = start.getMonth() + 1;
-      }
-      
-      const response = await fetch(
-        `${API_BASE}/api/accounts/${accountId}/statements/export?year=${year}&month=${month}`
-      );
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to download statement');
-      }
-      
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = `statement_${accountType.toLowerCase()}_${year}-${String(month).padStart(2, '0')}.pdf`;
-      
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="?(.+)"?/);
-        if (match) filename = match[1];
-      }
-      
-      const blob = await response.blob();
+      const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename;
+      a.download = `credit_statement_${new Date().toISOString().slice(0,10)}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       
-    } catch (error) {
-      console.error('Error downloading statement:', error);
-      alert('Failed to download statement. Please try again.');
-    } finally {
       setDownloadingStatement(false);
+      return; // Exit early for credit cards
     }
-  };
+
+    // REGULAR ACCOUNT CODE - This will only run for CHECKING, SAVINGS, BUSINESS
+    const today = new Date();
+    let year = today.getFullYear();
+    let month = today.getMonth() + 1;
+    
+    if (period === 'lastMonth') {
+      const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      year = lastMonth.getFullYear();
+      month = lastMonth.getMonth() + 1;
+    } else if (period === 'currentMonth') {
+      year = today.getFullYear();
+      month = today.getMonth() + 1;
+    } else if (period === '30days') {
+      year = today.getFullYear();
+      month = today.getMonth() + 1;
+    } else if (period === 'custom' && filterStartDate && filterEndDate) {
+      const start = new Date(filterStartDate);
+      year = start.getFullYear();
+      month = start.getMonth() + 1;
+    }
+    
+    const response = await fetch(
+      `${API_BASE}/api/accounts/${accountId}/statements/export?year=${year}&month=${month}`
+    );
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to download statement');
+    }
+    
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = `statement_${accountType.toLowerCase()}_${year}-${String(month).padStart(2, '0')}.pdf`;
+    
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?(.+)"?/);
+      if (match) filename = match[1];
+    }
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+  } catch (error) {
+    console.error('Error downloading statement:', error);
+    alert('Failed to download statement. Please try again.');
+  } finally {
+    setDownloadingStatement(false);
+  }
+};
+
 
   // ⭐⭐ UPDATED: Open statement in new tab for specific account - USING BACKEND API
   const openStatementInNewTab = async (accountType, period) => {
@@ -676,7 +990,9 @@ export default function Dashboard() {
       } else if (accountType === "SAVINGS") {
         accountId = savingsAccount?.id || savingsMeta?.id;
       } else if (accountType === "BUSINESS") {
-        accountId = businessAccounts[0]?.accountId; // Use the linked account ID
+        accountId = businessAccounts[0]?.accountId;
+      } else if (accountType === "CREDIT") {
+        accountId = creditAccounts[0]?.id;
       }
       
       if (!accountId) {
@@ -729,25 +1045,24 @@ export default function Dashboard() {
     setShowStatementDropdown(false);
     setShowPayBillsDropdown(false);
   };
-
-  // ⭐⭐ NEW: Handle Pay Bills button click
-  const handlePayBillsClick = () => {
-    setShowPayBillsDropdown(!showPayBillsDropdown);
-    setShowStatementDropdown(false);
-    setShowTransferDropdown(false);
-  };
+// ⭐⭐ NEW: Handle Pay Bills button click - goes directly to modal
+const handlePayBillsClick = () => {
+  setShowPayBillsModal(true); // Directly open the modal
+};
 
   // ⭐⭐ NEW: Open Transfer Modal with type
-  const openTransferModal = (type) => {
-    setTransferType(type);
-    setShowTransferDropdown(false);
-    
-    if (type === "betweenAccounts") {
-      setShowInternalTransferModal(true);
-    } else {
-      setShowTransferModal(true);
-    }
-  };
+const openTransferModal = (type) => {
+  setTransferType(type);
+  setShowTransferDropdown(false);
+  
+  if (type === "betweenAccounts") {
+    setShowInternalTransferModal(true);
+  } else if (type === "zelle") {
+    navigate('/zelle'); // This will take you to the new Zelle page
+  } else {
+    setShowTransferModal(true);
+  }
+};
 
   // ⭐⭐ NEW: Open Pay Bills Modal with category
   const openPayBillsModal = (category) => {
@@ -982,7 +1297,7 @@ export default function Dashboard() {
 
           {/* Main Dashboard Content */}
           <div className="w-full mx-auto" style={{ maxWidth: '100%' }}>
-            {/* Account summary - Enhanced layout with Business Accounts */}
+            {/* Account summary - Enhanced layout with Business Accounts and Credit Accounts */}
             <section className="mb-8 sm:mb-10 md:mb-12">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Regular checking and savings cards */}
@@ -1027,53 +1342,136 @@ export default function Dashboard() {
                 </div>
 
                 {/* Business Accounts - if any exist */}
-                {businessAccounts.length > 0 && businessAccounts.map((business) => (
-                  <div key={business.id} className="relative bg-gradient-to-r from-purple-50 to-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border border-purple-100 transform hover:scale-[1.01] transition-transform duration-300 lg:col-span-2">
-                    <BusinessAccountCard
-                      business={business}
-                      routingNumber={routingNumber}
-                      lastUpdated={lastUpdated}
-                    />
-                    {/* Verification badge */}
-                    {business.verified && (
-                      <div className="absolute top-2 right-2 px-2 py-1 bg-green-200 text-green-800 text-xs rounded-full">
-                        ✅ Verified
-                      </div>
-                    )}
-                  </div>
-                ))}
+{businessAccounts.length > 0 && businessAccounts.map((business) => (
+  <div key={business.id} className="relative bg-gradient-to-r from-purple-50 to-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border border-purple-100 transform hover:scale-[1.01] transition-transform duration-300 lg:col-span-2">
+    <BusinessAccountCard
+      business={business}
+      routingNumber={routingNumber}
+      lastUpdated={lastUpdated}
+    />
+    {business.verified && (
+      <div className="absolute top-2 right-2 px-2 py-1 bg-green-200 text-green-800 text-xs rounded-full">
+        ✅ Verified
+      </div>
+    )}
+  </div>
+))}
+
+{/* Credit Accounts - ADD THIS SECTION RIGHT HERE */}
+{creditAccounts && creditAccounts.length > 0 && creditAccounts.map((account) => (
+  <div key={account.id} className="relative bg-gradient-to-r from-blue-50 to-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border border-blue-200 transform hover:scale-[1.01] transition-transform duration-300 lg:col-span-2">
+    <CreditAccountCard
+      account={account}
+      balanceChange={0}
+      lastUpdated={lastUpdated}
+      onMakePayment={handleOpenCreditPayment}
+      onRequestIncrease={handleCreditIncreaseRequest}
+      onViewCards={handleCreditViewCards}
+      onViewTransactions={handleCreditViewTransactions}
+      onRevealAccount={handleCreditRevealAccount}
+    />
+  </div>
+))}
+
+
+  {/* Loan Accounts - if any exist */}
+{loanAccounts && loanAccounts.length > 0 && loanAccounts.map((loan) => (
+  <div key={loan.id} className="lg:col-span-2">
+    <LoanAccountCard loan={loan} onRefresh={refreshDashboard} />
+  </div>
+))}
+
               </div>
             </section>
 
+            {/* Credit Increase Requests Status */}
+            {increaseRequests.length > 0 && (
+              <div className="mt-6 mb-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Credit Limit Increase Requests</h3>
+                <div className="bg-white rounded-xl shadow-lg p-4 border border-blue-100">
+                  {increaseRequests.map((request) => {
+                    const statusColors = {
+                      PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '⏳' },
+                      APPROVED: { bg: 'bg-green-100', text: 'text-green-800', icon: '✅' },
+                      REJECTED: { bg: 'bg-red-100', text: 'text-red-800', icon: '❌' }
+                    };
+                    const status = statusColors[request.status] || statusColors.PENDING;
+                    
+                    return (
+                      <div key={request.id} className="border-b border-gray-100 last:border-0 py-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.bg} ${status.text}`}>
+                                {status.icon} {request.status}
+                              </span>
+                              <span className="text-sm text-gray-500">
+                                {new Date(request.submittedDate).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700">
+                              Requesting increase from ${request.currentLimit?.toLocaleString()} to ${request.requestedLimit?.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">Reason: {request.reason}</p>
+                            
+                            {request.status === 'REJECTED' && request.rejectionReason && (
+                              <p className="text-xs text-red-600 mt-1">
+                                Reason: {request.rejectionReason}
+                              </p>
+                            )}
+                            
+                            {request.status === 'APPROVED' && (
+                              <p className="text-xs text-green-600 mt-1">
+                                Approved on {new Date(request.reviewedDate).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                          
+                          {request.status === 'PENDING' && (
+                            <div className="ml-4">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                <span className="w-2 h-2 bg-yellow-500 rounded-full mr-1 animate-pulse"></span>
+                                Pending Review
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Enhanced Quick Actions Section */}
             <section className="mb-8 sm:mb-10 md:mb-12">
-              <QuickActions 
-
-  showTransferDropdown={showTransferDropdown}
-  setShowTransferDropdown={setShowTransferDropdown}
-  showPayBillsDropdown={showPayBillsDropdown}
-  setShowPayBillsDropdown={setShowPayBillsDropdown}
-  showStatementDropdown={showStatementDropdown}
-  setShowStatementDropdown={setShowStatementDropdown}
-  openTransferModal={openTransferModal}
-  openPayBillsModal={openPayBillsModal}
-  downloadingStatement={downloadingStatement}
-  expandedAccountInDropdown={expandedAccountInDropdown}
-  toggleAccountExpansion={toggleAccountExpansion}
-  getAccountNickname={getAccountNickname}
-  getMaskedAccountNumber={getMaskedAccountNumber}
-  getAccountBalance={getAccountBalance}
-  openStatementInNewTab={openStatementInNewTab}
-  downloadCSVStatement={downloadCSVStatement}
-  filterStartDate={filterStartDate}
-  filterEndDate={filterEndDate}
-  selectedAccount={selectedAccount}
-  handleTransferClick={handleTransferClick}
-  handlePayBillsClick={handlePayBillsClick}
-  handleViewStatementsClick={handleViewStatementsClick}
-  checkingAccount={checkingAccount || checkingMeta}
-  savingsAccount={savingsAccount || savingsMeta}
-  businessAccounts={businessAccounts}
+              <QuickActions
+                showTransferDropdown={showTransferDropdown}
+                setShowTransferDropdown={setShowTransferDropdown}
+                showPayBillsDropdown={showPayBillsDropdown}
+                setShowPayBillsDropdown={setShowPayBillsDropdown}
+                showStatementDropdown={showStatementDropdown}
+                setShowStatementDropdown={setShowStatementDropdown}
+                openTransferModal={openTransferModal}
+                openPayBillsModal={openPayBillsModal}
+                downloadingStatement={downloadingStatement}
+                expandedAccountInDropdown={expandedAccountInDropdown}
+                toggleAccountExpansion={toggleAccountExpansion}
+                getAccountNickname={getAccountNickname}
+                getMaskedAccountNumber={getMaskedAccountNumber}
+                getAccountBalance={getAccountBalance}
+                openStatementInNewTab={openStatementInNewTab}
+                downloadCSVStatement={downloadCSVStatement}
+                filterStartDate={filterStartDate}
+                filterEndDate={filterEndDate}
+                selectedAccount={selectedAccount}
+                handleTransferClick={handleTransferClick}
+                handlePayBillsClick={handlePayBillsClick}
+                handleViewStatementsClick={handleViewStatementsClick}
+                checkingAccount={checkingAccount || checkingMeta}
+                savingsAccount={savingsAccount || savingsMeta}
+                businessAccounts={businessAccounts}
+                creditAccounts={creditAccounts}
               />
             </section>
 
@@ -1089,32 +1487,37 @@ export default function Dashboard() {
               {/* Left Column: Transaction History */}
               <div className="xl:col-span-2">
                 <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border border-gray-100 h-full">
-                  <TransactionHistory
-                    transactions={transactions}
-                    selectedAccount={selectedAccount}
-                    setSelectedAccount={setSelectedAccount}
-                    filterType={filterType}
-                    setFilterType={setFilterType}
-                    filterStartDate={filterStartDate}
-                    setFilterStartDate={setFilterStartDate}
-                    filterEndDate={filterEndDate}
-                    setFilterEndDate={setFilterEndDate}
-                    filterMinAmount={filterMinAmount}
-                    setFilterMinAmount={setFilterMinAmount}
-                    filterMaxAmount={filterMaxAmount}
-                    setFilterMaxAmount={setFilterMaxAmount}
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                    currentPage={currentPage}
-                    setCurrentPage={setCurrentPage}
-                    transactionsPerPage={transactionsPerPage}
-                    renderType={renderType}
-                    clearAllFilters={clearAllFilters}
-                    filteredTransactions={filteredTransactions}
-                    currentTransactions={currentTransactions}
-                    totalPages={totalPages}
-                    handlePageChange={handlePageChange}
-                  />
+                <TransactionHistory
+  transactions={transactions}
+  selectedAccount={selectedAccount}
+  setSelectedAccount={setSelectedAccount}
+  filterType={filterType}
+  setFilterType={setFilterType}
+  filterStartDate={filterStartDate}
+  setFilterStartDate={setFilterStartDate}
+  filterEndDate={filterEndDate}
+  setFilterEndDate={setFilterEndDate}
+  filterMinAmount={filterMinAmount}
+  setFilterMinAmount={setFilterMinAmount}
+  filterMaxAmount={filterMaxAmount}
+  setFilterMaxAmount={setFilterMaxAmount}
+  searchQuery={searchQuery}
+  setSearchQuery={setSearchQuery}
+  currentPage={currentPage}
+  setCurrentPage={setCurrentPage}
+  transactionsPerPage={transactionsPerPage}
+  renderType={renderType}
+  clearAllFilters={clearAllFilters}
+  filteredTransactions={filteredTransactions}
+  currentTransactions={currentTransactions}
+  totalPages={totalPages}
+  handlePageChange={handlePageChange}
+  checkingAccount={checkingAccount || checkingMeta}
+  savingsAccount={savingsAccount || savingsMeta}
+  businessAccounts={businessAccounts}
+  creditAccounts={creditAccounts}
+  loanAccounts={loanAccounts}
+/>
                 </div>
               </div>
 
@@ -1144,22 +1547,42 @@ export default function Dashboard() {
         />
       )}
 
-      {showInternalTransferModal && (
-        <InternalTransferModal
-          accounts={accounts}
-          onClose={() => setShowInternalTransferModal(false)}
-          onSuccess={refreshDashboard}
-        />
-      )}
-
-      {showPayBillsModal && (
-        <PayBillsModal
-          accounts={accounts}
-          billCategory={billCategory}
-          onClose={() => setShowPayBillsModal(false)}
-          onSuccess={refreshDashboard}
-        />
-      )}
+    {showInternalTransferModal && (
+  <InternalTransferModal
+    accounts={[
+      ...(checkingAccount ? [checkingAccount] : []),
+      ...(savingsAccount ? [savingsAccount] : []),
+      ...businessAccounts,
+      ...creditAccounts
+    ]}
+    onClose={() => setShowInternalTransferModal(false)}
+    onSuccess={refreshDashboard}
+  />
+)}
+       
+        {showCreditPaymentModal && selectedCreditAccount && (
+  <CreditCardPaymentModal
+    creditAccount={selectedCreditAccount}
+    userAccounts={accounts}
+    onClose={() => {
+      setShowCreditPaymentModal(false);
+      setSelectedCreditAccount(null);
+    }}
+    onSuccess={refreshDashboard}
+  />
+)}
+ {showPayBillsModal && (
+  <PayBillsModal
+    accounts={[
+      ...(checkingAccount ? [checkingAccount] : []),
+      ...(savingsAccount ? [savingsAccount] : []),
+      ...businessAccounts,
+      ...creditAccounts
+    ]}
+    onClose={() => setShowPayBillsModal(false)}
+    onSuccess={refreshDashboard}
+  />
+)}
 
       {showTransactionModal && (
         <TransactionDetailsModal

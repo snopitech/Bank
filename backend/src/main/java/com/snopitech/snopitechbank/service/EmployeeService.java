@@ -1,7 +1,6 @@
 package com.snopitech.snopitechbank.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-// Fix the import - remove the main.java prefix
 import com.snopitech.snopitechbank.dto.*;
 import com.snopitech.snopitechbank.model.Employee;
 import com.snopitech.snopitechbank.repository.EmployeeRepository;
@@ -166,8 +165,6 @@ public void deleteAllEmployees() {
 public EmployeeDTO updateEmployeeProfile(Long id, EmployeeProfileUpdateRequest request) {
     Employee employee = employeeRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Employee not found with id: " + id));
-    
-    // Update only editable fields
     if (request.getPhone() != null) employee.setPhone(request.getPhone());
     if (request.getWorkPhone() != null) employee.setWorkPhone(request.getWorkPhone());
     if (request.getOfficeLocation() != null) employee.setOfficeLocation(request.getOfficeLocation());
@@ -390,32 +387,71 @@ public EmployeeDTO enableEmployee(Long id) {
     Employee updatedEmployee = employeeRepository.save(employee);
     return convertToDTO(updatedEmployee);
 }
-    // ==================== EMPLOYEE LOGIN ====================
+/**
+ * Employee login - returns Map with employee data and TOTP status
+ */
+public Map<String, Object> login(String email, String password) {
+    Employee employee = employeeRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("Invalid email or password"));
 
-    /**
-     * Employee login
-     */
-    public EmployeeDTO login(String email, String password) {
-        Employee employee = employeeRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+    if (!employee.isApproved()) {
+        throw new RuntimeException("Account not approved yet");
+    }
 
-        if (!employee.isApproved()) {
-            throw new RuntimeException("Account not approved yet");
+    if (!employee.getIsActive()) {
+        throw new RuntimeException("Account is deactivated");
+    }
+
+    if (!passwordEncoder.matches(password, employee.getPasswordHash())) {
+        throw new RuntimeException("Invalid email or password");
+    }
+
+    Map<String, Object> response = new HashMap<>();
+    
+    // Increment login count
+    int currentLoginCount = employee.getLoginCount() != null ? employee.getLoginCount() : 0;
+    employee.setLoginCount(currentLoginCount + 1);
+    
+    // Check if TOTP should be enforced (after 2 logins)
+    boolean enforceTotp = employee.getLoginCount() >= 3; // After 2 logins, on 3rd login enforce
+    
+    // Check if TOTP is enabled
+    Boolean totpEnabled = employee.getTotpEnabled();
+    
+    if (totpEnabled != null && totpEnabled) {
+        // TOTP already enabled - normal flow
+        String tempToken = UUID.randomUUID().toString();
+        
+        response.put("requiresTotp", true);
+        response.put("tempToken", tempToken);
+        response.put("employee", convertToDTO(employee));
+        response.put("totpEnforced", false);
+        
+    } else if (enforceTotp) {
+        // TOTP not enabled but enforcement is triggered
+        response.put("requiresTotp", false);
+        response.put("requiresTotpSetup", true);
+        response.put("employee", convertToDTO(employee));
+        response.put("message", "Two-factor authentication is now required. Please set it up.");
+        
+        // Save enforcement date
+        if (employee.getTotpEnforcementDate() == null) {
+            employee.setTotpEnforcementDate(LocalDateTime.now());
         }
-
-        if (!employee.getIsActive()) {
-            throw new RuntimeException("Account is deactivated");
-        }
-
-        if (!passwordEncoder.matches(password, employee.getPasswordHash())) {
-            throw new RuntimeException("Invalid email or password");
-        }
-
+        employeeRepository.save(employee);
+        
+    } else {
+        // No TOTP required yet
         employee.setLastLoginAt(LocalDateTime.now());
         employeeRepository.save(employee);
-
-        return convertToDTO(employee);
+        
+        response.put("requiresTotp", false);
+        response.put("employee", convertToDTO(employee));
+        response.put("loginsRemaining", 3 - employee.getLoginCount());
     }
+    
+    return response;
+}
 
     /**
      * Change employee password
@@ -480,9 +516,9 @@ public EmployeeDTO enableEmployee(Long id) {
     private void sendApprovalEmail(Employee employee) {
         String subject = "New Employee Profile Pending Approval - " + employee.getFullName();
         
-        // ✅ FIXED: Changed from port 5176 to 5173 to match your frontend
-        String approvalLink = "http://localhost:5173/employee-approval?token=" + employee.getApprovalToken();
-        String rejectLink = "http://localhost:5173/employee-approval?token=" + employee.getApprovalToken();
+      
+        String approvalLink = "http://localhost:5174/employee-approval?token=" + employee.getApprovalToken();
+        String rejectLink = "http://localhost:5174/employee-approval?token=" + employee.getApprovalToken();
 
         String htmlContent = String.format("""
             <html>
@@ -628,7 +664,7 @@ public EmployeeDTO enableEmployee(Long id) {
     }
 
     /**
-     * Convert Employee entity to DTO
+     * Convert Employee entity to DTO (private)
      */
     private EmployeeDTO convertToDTO(Employee employee) {
         EmployeeDTO dto = new EmployeeDTO(
@@ -649,7 +685,10 @@ public EmployeeDTO enableEmployee(Long id) {
         dto.setEmploymentType(employee.getEmploymentType());
         dto.setReportsTo(employee.getReportsTo());
         dto.setRole(employee.getRole());
-
+        
+  // Add TOTP fields with null safety
+dto.setTotpEnabled(employee.getTotpEnabled() != null ? employee.getTotpEnabled() : false);
+dto.setTotpSetupCompleted(employee.getTotpSetupCompleted() != null ? employee.getTotpSetupCompleted() : false);
         // Parse permissions JSON
         if (employee.getPermissions() != null) {
             try {
@@ -687,5 +726,150 @@ public EmployeeDTO enableEmployee(Long id) {
         dto.setLastLoginAt(employee.getLastLoginAt());
 
         return dto;
+    }
+
+    // ==================== TOTP METHODS ====================
+
+    /**
+     * Update employee's last login timestamp
+     */
+    @Transactional
+    public void updateLastLogin(Long employeeId) {
+        Employee employee = employeeRepository.findById(employeeId)
+            .orElseThrow(() -> new RuntimeException("Employee not found with id: " + employeeId));
+        
+        employee.setLastLoginAt(LocalDateTime.now());
+        employeeRepository.save(employee);
+    }
+
+    /**
+     * Verify employee password for TOTP operations
+     */
+    public boolean verifyPassword(Long employeeId, String password) {
+        Employee employee = employeeRepository.findById(employeeId)
+            .orElseThrow(() -> new RuntimeException("Employee not found with id: " + employeeId));
+        
+        return passwordEncoder.matches(password, employee.getPasswordHash());
+    }
+
+    /**
+     * Public method to convert Employee to DTO (for controllers)
+     */
+    public EmployeeDTO convertEmployeeToDTO(Employee employee) {
+        return convertToDTO(employee);
+    }
+
+  /**
+ * Reset TOTP for an employee (clears secret and disables)
+ */
+@Transactional
+public EmployeeDTO resetEmployeeTOTP(Long employeeId) {
+    Employee employee = employeeRepository.findById(employeeId)
+        .orElseThrow(() -> new RuntimeException("Employee not found with id: " + employeeId));
+    
+    // Clear TOTP fields
+    employee.setTotpSecret(null);
+    employee.setTotpEnabled(false);
+    employee.setTotpSetupCompleted(false);
+    
+    // RESET THE LOGIN COUNT TO 0
+    employee.setLoginCount(0);
+    
+    // Clear enforcement date
+    employee.setTotpEnforcementDate(null);
+    
+    Employee updatedEmployee = employeeRepository.save(employee);
+    
+    // Send email notification to employee
+    sendTOTPResetEmail(updatedEmployee);
+    
+    return convertToDTO(updatedEmployee);
+}
+
+    /**
+     * Disable TOTP for an employee (keeps secret but disables)
+     */
+    @Transactional
+    public EmployeeDTO disableEmployeeTOTP(Long employeeId) {
+        Employee employee = employeeRepository.findById(employeeId)
+            .orElseThrow(() -> new RuntimeException("Employee not found with id: " + employeeId));
+        
+        // Disable TOTP but keep secret (so they can re-enable later)
+        employee.setTotpEnabled(false);
+        
+        Employee updatedEmployee = employeeRepository.save(employee);
+        
+        // Send email notification
+        sendTOTPDisabledEmail(updatedEmployee);
+        
+        return convertToDTO(updatedEmployee);
+    }
+
+    /**
+     * Send TOTP reset email notification
+     */
+    private void sendTOTPResetEmail(Employee employee) {
+        String subject = "Your Two-Factor Authentication Has Been Reset";
+        
+        String htmlContent = String.format("""
+            <html>
+            <body style="font-family: Arial, sans-serif;">
+                <h2 style="color: #667eea;">TOTP Reset Notification</h2>
+                
+                <p>Dear %s,</p>
+                
+                <p>Your two-factor authentication (2FA) has been reset by HR.</p>
+                
+                <p>You can now log in without a 2FA code. After logging in, please set up 2FA again to secure your account.</p>
+                
+                <div style="background-color: #fef9c3; border-left: 4px solid #eab308; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0; color: #854d0e;">
+                        <strong>⚠️ Security Notice:</strong> If you did not request this reset, please contact HR immediately.
+                    </p>
+                </div>
+                
+                <hr style="border: 1px solid #f0f0f0;">
+                <p style="color: #666; font-size: 12px;">Snopitech Bank - Security Team</p>
+            </body>
+            </html>
+            """,
+            employee.getFirstName()
+        );
+        
+        emailService.sendEmail(employee.getEmail(), subject, htmlContent);
+    }
+
+    /**
+     * Send TOTP disabled email notification
+     */
+    private void sendTOTPDisabledEmail(Employee employee) {
+        String subject = "Two-Factor Authentication Disabled";
+        
+        String htmlContent = String.format("""
+            <html>
+            <body style="font-family: Arial, sans-serif;">
+                <h2 style="color: #667eea;">2FA Disabled Notification</h2>
+                
+                <p>Dear %s,</p>
+                
+                <p>Two-factor authentication (2FA) has been disabled for your account by HR.</p>
+                
+                <p>You can re-enable 2FA at any time from your security settings.</p>
+                
+                <div style="background-color: #fef9c3; border-left: 4px solid #eab308; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0; color: #854d0e;">
+                        <strong>⚠️ Security Notice:</strong> If you did not authorize this change, please contact HR immediately.
+                    </p>
+                </div>
+                
+                <hr style="border: 1px solid #f0f0f0;">
+                <p style="color: #666; font-size: 12px;">Snopitech Bank - Security Team</p>
+            </body>
+            </html>
+            """,
+            employee.getFirstName()
+        );
+        
+        emailService.sendEmail(employee.getEmail(), subject, htmlContent);
     }
 }

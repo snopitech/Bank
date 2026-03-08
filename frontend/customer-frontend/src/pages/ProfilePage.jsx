@@ -75,9 +75,7 @@ export default function ProfilePage() {
     setLoadingSecurity(true);
     try {
       const response = await fetch(`${API_BASE}/api/users/${userId}/security-questions`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+       
       });
       
       if (response.ok) {
@@ -138,7 +136,7 @@ export default function ProfilePage() {
 
         // ⭐ NEW: Fetch security questions
         if (token) {
-          fetchSecurityQuestions(loggedInUser.id, token);
+          fetchSecurityQuestions(loggedInUser.id);
         }
 
       } catch (error) {
@@ -174,20 +172,19 @@ export default function ProfilePage() {
   };
 
   // ⭐⭐⭐ FIXED: Profile Save Function with correct authentication
-  const handleSaveProfile = async () => {
-    setIsSaving(true);
-    setSaveMessage({ type: "", text: "" });
+ const handleSaveProfile = async () => {
+  setIsSaving(true);
+  setSaveMessage({ type: "", text: "" });
 
-    try {
-      // ⭐⭐⭐ FIXED: Get sessionId from loggedInUser instead of separate token
-      const loggedInUser = JSON.parse(localStorage.getItem("loggedInUser"));
-      const token = loggedInUser?.sessionId;
-      if (!token) {
-        throw new Error("Authentication token not found. Please login again.");
-      }
+  try {
+    // REMOVE token check entirely
+    const loggedInUser = JSON.parse(localStorage.getItem("loggedInUser"));
+    if (!loggedInUser) {
+      throw new Error("User not found. Please login again.");
+    }
 
-      // 1. Get the user ID
-      const userId = user.id;
+    const userId = loggedInUser.id; // Use loggedInUser.id directly
+
       console.log("🔄 Updating profile for user ID:", userId);
       
       // 2. Prepare update data - Map frontend fields to backend DTO fields
@@ -218,7 +215,6 @@ export default function ProfilePage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`  // ADD authentication header
         },
         body: JSON.stringify(updateData),
       });

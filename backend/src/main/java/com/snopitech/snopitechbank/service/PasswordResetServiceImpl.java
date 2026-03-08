@@ -46,7 +46,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         userRepository.save(user);
         
         // Build reset link (frontend URL)
-        String resetLink = "http://localhost:5173/reset-password?token=" + token;
+        String resetLink = "http://localhost:5175/reset-password?token=" + token;
         
         // Send email
         emailService.sendPasswordResetEmail(user.getEmail(), user.getFullName(), resetLink);

@@ -112,6 +112,16 @@ public class BusinessAccount {
     private String reviewedBy;
     private String rejectionReason;
 
+    // ===== NEW: Disable/Enable functionality =====
+    @Column(name = "is_disabled")
+    private Boolean disabled = false;
+
+    @Column(name = "disabled_date")
+    private LocalDateTime disabledDate;
+
+    @Column(name = "disable_reason")
+    private String disableReason;
+
     // Constructors
     public BusinessAccount() {
         this.createdDate = LocalDateTime.now();
@@ -120,6 +130,7 @@ public class BusinessAccount {
         this.applicationStatus = "PENDING_REVIEW";
         this.verified = false;
         this.cards = new ArrayList<>();
+        this.disabled = false;
     }
 
     // Constructor for application (no account or cards yet)
@@ -138,6 +149,7 @@ public class BusinessAccount {
         this.verified = false;
         this.cards = new ArrayList<>();
         this.account = null; // No account until approval
+        this.disabled = false;
     }
 
     // Constructor for backward compatibility (kept for existing code)
@@ -157,6 +169,7 @@ public class BusinessAccount {
         this.applicationStatus = "PENDING_REVIEW";
         this.verified = false;
         this.cards = new ArrayList<>();
+        this.disabled = false;
     }
 
     // Getters and Setters
@@ -240,6 +253,31 @@ public class BusinessAccount {
 
     public void setRejectionReason(String rejectionReason) {
         this.rejectionReason = rejectionReason;
+    }
+
+    // ===== Disable/Enable getters and setters =====
+    public Boolean isDisabled() {
+        return disabled != null ? disabled : false;
+    }
+
+    public void setDisabled(Boolean disabled) {
+        this.disabled = disabled;
+    }
+
+    public LocalDateTime getDisabledDate() {
+        return disabledDate;
+    }
+
+    public void setDisabledDate(LocalDateTime disabledDate) {
+        this.disabledDate = disabledDate;
+    }
+
+    public String getDisableReason() {
+        return disableReason;
+    }
+
+    public void setDisableReason(String disableReason) {
+        this.disableReason = disableReason;
     }
 
     // ===== HELPER METHODS FOR CARDS =====

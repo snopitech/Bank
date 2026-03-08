@@ -103,7 +103,7 @@ const AccountSummary = () => {
     }
   };
 
-  // Fetch transactions
+  // Fetch regular transactions
   const fetchTransactions = async () => {
     try {
       if (!user?.id) {

@@ -1,250 +1,253 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+const API_BASE = "http://localhost:8080";
 
 const AdminAlerts = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [alerts, setAlerts] = useState([]);
   const [filterType, setFilterType] = useState('all');
-  const [filterSeverity, setFilterSeverity] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPriority, setFilterPriority] = useState('all');
+  const [filterRead, setFilterRead] = useState('all'); // 'all', 'read', 'unread'
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [stats, setStats] = useState({
+    total: 0,
+    unread: 0,
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    security: 0,
+    transaction: 0,
+    account: 0,
+    notice: 0
+  });
 
-  // Mock alerts data
-  const [alerts] = useState([
-    {
-      id: 1,
-      type: 'SECURITY',
-      severity: 'HIGH',
-      status: 'ACTIVE',
-      title: 'Multiple Failed Login Attempts',
-      message: 'User Michael Agbonifo has 5 failed login attempts in the last 15 minutes',
-      customer: 'Michael Agbonifo',
-      customerId: 1,
-      timestamp: '2026-02-17 10:30:45',
-      ipAddress: '192.168.1.105',
-      location: 'Houston, TX',
-      device: 'Chrome / Windows',
-      acknowledged: false,
-      acknowledgedBy: null,
-      acknowledgedAt: null,
-      resolved: false,
-      resolvedBy: null,
-      resolvedAt: null,
-      notes: ''
-    },
-    {
-      id: 2,
-      type: 'TRANSACTION',
-      severity: 'HIGH',
-      status: 'ACTIVE',
-      title: 'Large Transfer Detected',
-      message: '$50,000 transfer initiated from account ****2326 to external account',
-      customer: 'Tracy Agbonifo',
-      customerId: 3,
-      timestamp: '2026-02-17 09:15:22',
-      amount: 50000,
-      accountFrom: '****2326',
-      accountTo: 'EXT-7890',
-      acknowledged: false,
-      acknowledgedBy: null,
-      acknowledgedAt: null,
-      resolved: false,
-      resolvedBy: null,
-      resolvedAt: null,
-      notes: ''
-    },
-    {
-      id: 3,
-      type: 'FRAUD',
-      severity: 'CRITICAL',
-      status: 'ACTIVE',
-      title: 'Potential Card Skimming',
-      message: 'Multiple ATM withdrawals at different locations within 1 hour',
-      customer: 'Cynthia Ekeh',
-      customerId: 2,
-      timestamp: '2026-02-17 08:45:12',
-      transactions: [
-        { time: '07:30', location: 'ATM #1234, Houston', amount: 500 },
-        { time: '08:15', location: 'ATM #5678, Pearland', amount: 400 }
-      ],
-      acknowledged: true,
-      acknowledgedBy: 'Sarah Johnson',
-      acknowledgedAt: '2026-02-17 09:00:00',
-      resolved: false,
-      resolvedBy: null,
-      resolvedAt: null,
-      notes: 'Under investigation'
-    },
-    {
-      id: 4,
-      type: 'SYSTEM',
-      severity: 'MEDIUM',
-      status: 'ACTIVE',
-      title: 'Database Performance Degradation',
-      message: 'Query response time increased by 150% in the last hour',
-      customer: null,
-      customerId: null,
-      timestamp: '2026-02-17 07:30:00',
-      metrics: {
-        responseTime: '250ms',
-        normal: '100ms',
-        queries: '10,234/min'
-      },
-      acknowledged: false,
-      acknowledgedBy: null,
-      acknowledgedAt: null,
-      resolved: false,
-      resolvedBy: null,
-      resolvedAt: null,
-      notes: ''
-    },
-    {
-      id: 5,
-      type: 'ACCOUNT',
-      severity: 'LOW',
-      status: 'ACTIVE',
-      title: 'Low Balance Alert',
-      message: 'Account ****2326 has balance below $100 threshold',
-      customer: 'Tracy Agbonifo',
-      customerId: 3,
-      timestamp: '2026-02-17 06:20:33',
-      account: '****2326',
-      balance: 25.00,
-      threshold: 100.00,
-      acknowledged: false,
-      acknowledgedBy: null,
-      acknowledgedAt: null,
-      resolved: false,
-      resolvedBy: null,
-      resolvedAt: null,
-      notes: ''
-    },
-    {
-      id: 6,
-      type: 'COMPLIANCE',
-      severity: 'HIGH',
-      status: 'RESOLVED',
-      title: 'KYC Verification Required',
-      message: 'Customer Bose Agbonifo needs document verification',
-      customer: 'Bose Agbonifo',
-      customerId: 4,
-      timestamp: '2026-02-16 14:30:00',
-      documents: ['ID Card', 'Proof of Address'],
-      acknowledged: true,
-      acknowledgedBy: 'John Smith',
-      acknowledgedAt: '2026-02-16 15:00:00',
-      resolved: true,
-      resolvedBy: 'John Smith',
-      resolvedAt: '2026-02-16 16:30:00',
-      notes: 'Documents verified and approved'
-    },
-    {
-      id: 7,
-      type: 'CARD',
-      severity: 'HIGH',
-      status: 'RESOLVED',
-      title: 'Lost Card Report',
-      message: 'Customer reported card ****6581 as lost/stolen',
-      customer: 'Michael Agbonifo',
-      customerId: 1,
-      timestamp: '2026-02-16 11:20:15',
-      cardNumber: '****6581',
-      reason: 'Lost',
-      acknowledged: true,
-      acknowledgedBy: 'Lisa Brown',
-      acknowledgedAt: '2026-02-16 11:30:00',
-      resolved: true,
-      resolvedBy: 'Lisa Brown',
-      resolvedAt: '2026-02-16 11:45:00',
-      notes: 'Card blocked, replacement ordered'
-    },
-    {
-      id: 8,
-      type: 'TRANSACTION',
-      severity: 'MEDIUM',
-      status: 'RESOLVED',
-      title: 'Duplicate Transaction Reported',
-      message: 'Customer reported duplicate charge of $45.67 at Uber',
-      customer: 'Test User',
-      customerId: 5,
-      timestamp: '2026-02-16 09:10:22',
-      amount: 45.67,
-      merchant: 'Uber',
-      transactionId: 'TXN-1008',
-      acknowledged: true,
-      acknowledgedBy: 'Mike Wilson',
-      acknowledgedAt: '2026-02-16 09:30:00',
-      resolved: true,
-      resolvedBy: 'Mike Wilson',
-      resolvedAt: '2026-02-16 10:15:00',
-      notes: 'Duplicate charge refunded'
-    },
-    {
-      id: 9,
-      type: 'SYSTEM',
-      severity: 'LOW',
-      status: 'RESOLVED',
-      title: 'Scheduled Maintenance',
-      message: 'System maintenance completed successfully',
-      customer: null,
-      customerId: null,
-      timestamp: '2026-02-16 04:00:00',
-      duration: '2 hours',
-      components: ['Database', 'API Gateway'],
-      acknowledged: true,
-      acknowledgedBy: 'System',
-      acknowledgedAt: '2026-02-16 04:00:00',
-      resolved: true,
-      resolvedBy: 'System',
-      resolvedAt: '2026-02-16 06:00:00',
-      notes: 'All systems operational'
-    },
-    {
-      id: 10,
-      type: 'SECURITY',
-      severity: 'MEDIUM',
-      status: 'ACTIVE',
-      title: 'New Device Login',
-      message: 'User Cynthia Ekeh logged in from new device',
-      customer: 'Cynthia Ekeh',
-      customerId: 2,
-      timestamp: '2026-02-17 11:45:33',
-      device: 'Firefox / MacOS',
-      location: 'Austin, TX',
-      ipAddress: '192.168.1.205',
-      acknowledged: false,
-      acknowledgedBy: null,
-      acknowledgedAt: null,
-      resolved: false,
-      resolvedBy: null,
-      resolvedAt: null,
-      notes: ''
+  // Get current user ID from localStorage
+  const getCurrentUserId = () => {
+    const adminUser = localStorage.getItem('adminUser');
+    const employeeUser = localStorage.getItem('employeeUser');
+    
+    if (adminUser) {
+      return JSON.parse(adminUser).id;
+    } else if (employeeUser) {
+      return JSON.parse(employeeUser).id;
     }
-  ]);
+    return null;
+  };
+
+  const userId = getCurrentUserId();
+
+  useEffect(() => {
+    if (!userId) {
+      navigate('/');
+      return;
+    }
+    fetchAlerts();
+  }, [userId]);
+
+  const fetchAlerts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/alerts/user/${userId}`);
+      if (!response.ok) throw new Error('Failed to fetch alerts');
+      const data = await response.json();
+      
+      setAlerts(data);
+      calculateStats(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/alerts/user/${userId}/unread/count`);
+      if (response.ok) {
+        const count = await response.json();
+        return count;
+      }
+    } catch (err) {
+      console.error('Error fetching unread count:', err);
+    }
+    return 0;
+  };
+
+  const calculateStats = (alertsData) => {
+    const unread = alertsData.filter(a => !a.read).length;
+    const critical = alertsData.filter(a => a.priority === 'HIGH' && !a.read).length;
+    const high = alertsData.filter(a => a.priority === 'HIGH' && !a.read).length;
+    const medium = alertsData.filter(a => a.priority === 'MEDIUM' && !a.read).length;
+    const low = alertsData.filter(a => a.priority === 'LOW' && !a.read).length;
+    const security = alertsData.filter(a => a.type === 'SECURITY' && !a.read).length;
+    const transaction = alertsData.filter(a => a.type === 'TRANSACTION' && !a.read).length;
+    const account = alertsData.filter(a => a.type === 'ACCOUNT' && !a.read).length;
+    const notice = alertsData.filter(a => a.type === 'NOTICE' && !a.read).length;
+
+    setStats({
+      total: alertsData.length,
+      unread,
+      critical,
+      high,
+      medium,
+      low,
+      security,
+      transaction,
+      account,
+      notice
+    });
+  };
+
+  const handleMarkAsRead = async (alertId) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/alerts/${alertId}/read`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) throw new Error('Failed to mark as read');
+      
+      // Update local state
+      setAlerts(prev => 
+        prev.map(alert => 
+          alert.id === alertId ? { ...alert, read: true } : alert
+        )
+      );
+      
+      // Recalculate stats
+      const updatedAlerts = alerts.map(alert => 
+        alert.id === alertId ? { ...alert, read: true } : alert
+      );
+      calculateStats(updatedAlerts);
+      
+    } catch (err) {
+      console.error('Error marking alert as read:', err);
+      alert('Failed to mark alert as read');
+    }
+  };
+
+  const handleMarkAsUnread = async (alertId) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/alerts/${alertId}/unread`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) throw new Error('Failed to mark as unread');
+      
+      // Update local state
+      setAlerts(prev => 
+        prev.map(alert => 
+          alert.id === alertId ? { ...alert, read: false } : alert
+        )
+      );
+      
+      // Recalculate stats
+      const updatedAlerts = alerts.map(alert => 
+        alert.id === alertId ? { ...alert, read: false } : alert
+      );
+      calculateStats(updatedAlerts);
+      
+    } catch (err) {
+      console.error('Error marking alert as unread:', err);
+      alert('Failed to mark as unread');
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/alerts/user/${userId}/read-all`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) throw new Error('Failed to mark all as read');
+      
+      // Update local state
+      setAlerts(prev => prev.map(alert => ({ ...alert, read: true })));
+      
+      // Recalculate stats
+      const updatedAlerts = alerts.map(alert => ({ ...alert, read: true }));
+      calculateStats(updatedAlerts);
+      
+    } catch (err) {
+      console.error('Error marking all as read:', err);
+      alert('Failed to mark all as read');
+    }
+  };
+
+  const handleDeleteAlert = async (alertId) => {
+    if (!window.confirm('Are you sure you want to delete this alert?')) return;
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/alerts/${alertId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) throw new Error('Failed to delete alert');
+      
+      // Update local state
+      const updatedAlerts = alerts.filter(alert => alert.id !== alertId);
+      setAlerts(updatedAlerts);
+      calculateStats(updatedAlerts);
+      
+      if (selectedAlert?.id === alertId) {
+        setShowDetails(false);
+        setSelectedAlert(null);
+      }
+      
+    } catch (err) {
+      console.error('Error deleting alert:', err);
+      alert('Failed to delete alert');
+    }
+  };
+
+  const handleDeleteAllAlerts = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL alerts? This cannot be undone.')) return;
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/alerts/user/${userId}/all`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) throw new Error('Failed to delete all alerts');
+      
+      // Clear local state
+      setAlerts([]);
+      calculateStats([]);
+      setShowDetails(false);
+      setSelectedAlert(null);
+      
+    } catch (err) {
+      console.error('Error deleting all alerts:', err);
+      alert('Failed to delete all alerts');
+    }
+  };
 
   const alertTypes = [
-    { id: 'all', name: 'All Types', count: alerts.length },
-    { id: 'SECURITY', name: 'Security', count: alerts.filter(a => a.type === 'SECURITY').length, icon: '🔒' },
-    { id: 'TRANSACTION', name: 'Transaction', count: alerts.filter(a => a.type === 'TRANSACTION').length, icon: '💰' },
-    { id: 'FRAUD', name: 'Fraud', count: alerts.filter(a => a.type === 'FRAUD').length, icon: '🚩' },
-    { id: 'ACCOUNT', name: 'Account', count: alerts.filter(a => a.type === 'ACCOUNT').length, icon: '🏦' },
-    { id: 'CARD', name: 'Card', count: alerts.filter(a => a.type === 'CARD').length, icon: '💳' },
-    { id: 'SYSTEM', name: 'System', count: alerts.filter(a => a.type === 'SYSTEM').length, icon: '⚙️' },
-    { id: 'COMPLIANCE', name: 'Compliance', count: alerts.filter(a => a.type === 'COMPLIANCE').length, icon: '📋' }
+    { id: 'all', name: 'All Types', icon: '📢' },
+    { id: 'SECURITY', name: 'Security', icon: '🔒' },
+    { id: 'TRANSACTION', name: 'Transaction', icon: '💰' },
+    { id: 'ACCOUNT', name: 'Account', icon: '🏦' },
+    { id: 'NOTICE', name: 'Notice', icon: '📋' }
   ];
 
-  const severityLevels = [
-    { id: 'all', name: 'All Severities', count: alerts.length },
-    { id: 'CRITICAL', name: 'Critical', count: alerts.filter(a => a.severity === 'CRITICAL').length, color: '#7f1d1d' },
-    { id: 'HIGH', name: 'High', count: alerts.filter(a => a.severity === 'HIGH').length, color: '#991b1b' },
-    { id: 'MEDIUM', name: 'Medium', count: alerts.filter(a => a.severity === 'MEDIUM').length, color: '#b45309' },
-    { id: 'LOW', name: 'Low', count: alerts.filter(a => a.severity === 'LOW').length, color: '#047857' }
+  const priorityLevels = [
+    { id: 'all', name: 'All Priorities' },
+    { id: 'HIGH', name: 'High Priority' },
+    { id: 'MEDIUM', name: 'Medium Priority' },
+    { id: 'LOW', name: 'Low Priority' }
   ];
 
-  const getSeverityColor = (severity) => {
-    switch(severity) {
-      case 'CRITICAL': return '#7f1d1d';
+  const getPriorityColor = (priority) => {
+    switch(priority) {
       case 'HIGH': return '#991b1b';
       case 'MEDIUM': return '#b45309';
       case 'LOW': return '#047857';
@@ -256,47 +259,48 @@ const AdminAlerts = () => {
     const icons = {
       'SECURITY': '🔒',
       'TRANSACTION': '💰',
-      'FRAUD': '🚩',
       'ACCOUNT': '🏦',
-      'CARD': '💳',
-      'SYSTEM': '⚙️',
-      'COMPLIANCE': '📋'
+      'NOTICE': '📋'
     };
     return icons[type] || '📢';
-  };
-
-  const getStatusColor = (status) => {
-    return status === 'ACTIVE' ? '#ef4444' : '#22c55e';
   };
 
   const filteredAlerts = alerts.filter(alert => {
     const matchesSearch = 
       (alert.title && alert.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (alert.message && alert.message.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (alert.customer && alert.customer.toLowerCase().includes(searchTerm.toLowerCase()));
+      (alert.message && alert.message.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesType = filterType === 'all' || alert.type === filterType;
-    const matchesSeverity = filterSeverity === 'all' || alert.severity === filterSeverity;
-    const matchesStatus = filterStatus === 'all' || alert.status === filterStatus;
+    const matchesPriority = filterPriority === 'all' || alert.priority === filterPriority;
+    const matchesRead = filterRead === 'all' || 
+                       (filterRead === 'read' && alert.read) || 
+                       (filterRead === 'unread' && !alert.read);
     
-    return matchesSearch && matchesType && matchesSeverity && matchesStatus;
+    return matchesSearch && matchesType && matchesPriority && matchesRead;
   });
 
-  const handleAcknowledge = (alertId) => {
-    alert(`Alert ${alertId} acknowledged`);
-  };
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-  const handleResolve = (alertId) => {
-    alert(`Alert ${alertId} resolved`);
-  };
-
-  const stats = {
-    total: alerts.length,
-    active: alerts.filter(a => a.status === 'ACTIVE').length,
-    critical: alerts.filter(a => a.severity === 'CRITICAL' && a.status === 'ACTIVE').length,
-    high: alerts.filter(a => a.severity === 'HIGH' && a.status === 'ACTIVE').length,
-    security: alerts.filter(a => a.type === 'SECURITY' && a.status === 'ACTIVE').length,
-    fraud: alerts.filter(a => a.type === 'FRAUD' && a.status === 'ACTIVE').length
+    if (diffMins < 60) {
+      return diffMins === 0 ? 'Just now' : `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    } else if (diffDays < 7) {
+      return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    } else {
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
   };
 
   const styles = {
@@ -415,7 +419,8 @@ const AdminAlerts = () => {
       boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
       cursor: 'pointer',
       transition: 'all 0.2s',
-      borderLeft: '4px solid transparent'
+      borderLeft: '4px solid transparent',
+      opacity: alert => alert.read ? 0.7 : 1
     },
     alertHeader: {
       display: 'flex',
@@ -454,14 +459,14 @@ const AdminAlerts = () => {
       color: '#999',
       marginBottom: '10px'
     },
-    severityBadge: {
+    priorityBadge: {
       padding: '4px 8px',
       borderRadius: '4px',
       fontSize: '11px',
       fontWeight: '600',
       color: 'white'
     },
-    statusBadge: {
+    readBadge: {
       padding: '4px 8px',
       borderRadius: '4px',
       fontSize: '11px',
@@ -483,12 +488,16 @@ const AdminAlerts = () => {
       cursor: 'pointer',
       marginRight: '8px'
     },
-    acknowledgeButton: {
+    readButton: {
+      background: '#3b82f6',
+      color: 'white'
+    },
+    unreadButton: {
       background: '#eab308',
       color: 'white'
     },
-    resolveButton: {
-      background: '#22c55e',
+    deleteButton: {
+      background: '#ef4444',
       color: 'white'
     },
     modal: {
@@ -534,31 +543,67 @@ const AdminAlerts = () => {
       fontWeight: '500',
       color: '#333'
     },
-    notesTextarea: {
-      width: '100%',
-      padding: '12px',
-      border: '1px solid #e0e0e0',
-      borderRadius: '8px',
-      fontSize: '14px',
-      minHeight: '100px',
-      marginTop: '10px'
-    },
     modalButtons: {
       display: 'flex',
       gap: '12px',
       justifyContent: 'flex-end',
       marginTop: '20px'
+    },
+    loadingContainer: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '100vh',
+      color: 'white'
+    },
+    errorContainer: {
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '100vh',
+      color: 'white'
     }
   };
+
+  if (loading) {
+    return (
+      <div style={styles.loadingContainer}>
+        <p>Loading alerts...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={styles.errorContainer}>
+        <h2>Error Loading Alerts</h2>
+        <p>{error}</p>
+        <button style={styles.backButton} onClick={fetchAlerts}>
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
       {/* Header */}
       <div style={styles.header}>
         <h1 style={styles.headerTitle}>Alerts & Notifications</h1>
-        <button style={styles.backButton} onClick={() => navigate('/dashboard')}>
-          ← Back to Dashboard
-        </button>
+        <div>
+          {alerts.length > 0 && (
+            <button
+              style={{ ...styles.backButton, marginRight: '10px', background: '#22c55e' }}
+              onClick={handleMarkAllAsRead}
+            >
+              Mark All Read
+            </button>
+          )}
+          <button style={styles.backButton} onClick={() => navigate('/dashboard')}>
+            ← Back to Dashboard
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -566,22 +611,22 @@ const AdminAlerts = () => {
         <div style={styles.statCard}>
           <div style={styles.statLabel}>Total Alerts</div>
           <div style={styles.statValue}>{stats.total}</div>
-          <div style={{...styles.statSub, color: '#ef4444'}}>{stats.active} active</div>
-        </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Critical</div>
-          <div style={{...styles.statValue, color: '#7f1d1d'}}>{stats.critical}</div>
-          <div style={styles.statSub}>Need immediate attention</div>
+          <div style={{...styles.statSub, color: '#ef4444'}}>{stats.unread} unread</div>
         </div>
         <div style={styles.statCard}>
           <div style={styles.statLabel}>High Priority</div>
           <div style={{...styles.statValue, color: '#991b1b'}}>{stats.high}</div>
-          <div style={styles.statSub}>Require review</div>
+          <div style={styles.statSub}>Need attention</div>
         </div>
         <div style={styles.statCard}>
-          <div style={styles.statLabel}>Security/Fraud</div>
-          <div style={styles.statValue}>{stats.security + stats.fraud}</div>
-          <div style={styles.statSub}>Security: {stats.security} | Fraud: {stats.fraud}</div>
+          <div style={styles.statLabel}>Medium Priority</div>
+          <div style={{...styles.statValue, color: '#b45309'}}>{stats.medium}</div>
+          <div style={styles.statSub}>Review soon</div>
+        </div>
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>Low Priority</div>
+          <div style={{...styles.statValue, color: '#047857'}}>{stats.low}</div>
+          <div style={styles.statSub}>For information</div>
         </div>
       </div>
 
@@ -589,7 +634,7 @@ const AdminAlerts = () => {
       <div style={styles.filters}>
         <input
           type="text"
-          placeholder="Search by title, message, customer..."
+          placeholder="Search by title or message..."
           style={styles.searchInput}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -601,29 +646,29 @@ const AdminAlerts = () => {
         >
           {alertTypes.map(type => (
             <option key={type.id} value={type.id}>
-              {type.icon} {type.name} ({type.count})
+              {type.icon} {type.name}
             </option>
           ))}
         </select>
         <select
           style={styles.filterSelect}
-          value={filterSeverity}
-          onChange={(e) => setFilterSeverity(e.target.value)}
+          value={filterPriority}
+          onChange={(e) => setFilterPriority(e.target.value)}
         >
-          {severityLevels.map(level => (
+          {priorityLevels.map(level => (
             <option key={level.id} value={level.id}>
-              {level.name} ({level.count})
+              {level.name}
             </option>
           ))}
         </select>
         <select
           style={styles.filterSelect}
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
+          value={filterRead}
+          onChange={(e) => setFilterRead(e.target.value)}
         >
           <option value="all">All Status</option>
-          <option value="ACTIVE">Active ({alerts.filter(a => a.status === 'ACTIVE').length})</option>
-          <option value="RESOLVED">Resolved ({alerts.filter(a => a.status === 'RESOLVED').length})</option>
+          <option value="unread">Unread Only</option>
+          <option value="read">Read Only</option>
         </select>
       </div>
 
@@ -633,83 +678,98 @@ const AdminAlerts = () => {
           Showing <span style={styles.summaryHighlight}>{filteredAlerts.length}</span> of <span style={styles.summaryHighlight}>{alerts.length}</span> alerts
         </span>
         <span style={styles.summaryText}>
-          Active: <span style={{...styles.summaryHighlight, color: '#ef4444'}}>{filteredAlerts.filter(a => a.status === 'ACTIVE').length}</span>
+          Unread: <span style={{...styles.summaryHighlight, color: '#ef4444'}}>{filteredAlerts.filter(a => !a.read).length}</span>
         </span>
       </div>
 
       {/* Alerts List */}
       <div style={styles.alertsList}>
-        {filteredAlerts.map(alert => (
-          <div
-            key={alert.id}
-            style={{
-              ...styles.alertItem,
-              borderLeftColor: getSeverityColor(alert.severity)
-            }}
-            onClick={() => {
-              setSelectedAlert(alert);
-              setShowDetails(true);
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(5px)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}
-          >
-            <div style={styles.alertHeader}>
-              <div style={styles.alertType}>
-                <span style={styles.typeIcon}>{getTypeIcon(alert.type)}</span>
-                <span style={styles.typeName}>{alert.type}</span>
-              </div>
-              <span style={{
-                ...styles.statusBadge,
-                background: `${getStatusColor(alert.status)}20`,
-                color: getStatusColor(alert.status)
-              }}>
-                {alert.status}
-              </span>
-            </div>
-
-            <div style={styles.alertTitle}>{alert.title}</div>
-            <div style={styles.alertMessage}>{alert.message}</div>
-
-            <div style={styles.alertMeta}>
-              <span>🕒 {alert.timestamp}</span>
-              {alert.customer && <span>👤 {alert.customer}</span>}
-              {alert.amount && <span>💰 ${alert.amount.toLocaleString()}</span>}
-            </div>
-
-            <div style={styles.alertFooter}>
-              <span style={{
-                ...styles.severityBadge,
-                background: getSeverityColor(alert.severity)
-              }}>
-                {alert.severity}
-              </span>
-              <div>
-                {!alert.acknowledged && alert.status === 'ACTIVE' && (
-                  <button
-                    style={{...styles.actionButton, ...styles.acknowledgeButton}}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAcknowledge(alert.id);
-                    }}
-                  >
-                    Acknowledge
-                  </button>
-                )}
-                {alert.acknowledged && !alert.resolved && alert.status === 'ACTIVE' && (
-                  <button
-                    style={{...styles.actionButton, ...styles.resolveButton}}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleResolve(alert.id);
-                    }}
-                  >
-                    Resolve
-                  </button>
-                )}
-              </div>
-            </div>
+        {filteredAlerts.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: '12px' }}>
+            <p style={{ color: '#666' }}>No alerts found matching your criteria</p>
           </div>
-        ))}
+        ) : (
+          filteredAlerts.map(alert => (
+            <div
+              key={alert.id}
+              style={{
+                ...styles.alertItem,
+                borderLeftColor: getPriorityColor(alert.priority),
+                opacity: alert.read ? 0.7 : 1
+              }}
+              onClick={() => {
+                setSelectedAlert(alert);
+                setShowDetails(true);
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(5px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}
+            >
+              <div style={styles.alertHeader}>
+                <div style={styles.alertType}>
+                  <span style={styles.typeIcon}>{alert.icon || getTypeIcon(alert.type)}</span>
+                  <span style={styles.typeName}>{alert.type}</span>
+                </div>
+                <span style={{
+                  ...styles.readBadge,
+                  background: alert.read ? '#22c55e20' : '#eab30820',
+                  color: alert.read ? '#22c55e' : '#eab308'
+                }}>
+                  {alert.read ? 'Read' : 'Unread'}
+                </span>
+              </div>
+
+              <div style={styles.alertTitle}>{alert.title}</div>
+              <div style={styles.alertMessage}>{alert.message}</div>
+
+              <div style={styles.alertMeta}>
+                <span>🕒 {formatTimestamp(alert.timestamp)}</span>
+                {alert.accountNumber && <span>🏦 Account: {alert.accountNumber}</span>}
+              </div>
+
+              <div style={styles.alertFooter}>
+                <span style={{
+                  ...styles.priorityBadge,
+                  background: getPriorityColor(alert.priority)
+                }}>
+                  {alert.priority}
+                </span>
+                <div>
+                  {!alert.read && (
+                    <button
+                      style={{...styles.actionButton, ...styles.readButton}}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkAsRead(alert.id);
+                      }}
+                    >
+                      Mark Read
+                    </button>
+                  )}
+                  {alert.read && (
+                    <button
+                      style={{...styles.actionButton, ...styles.unreadButton}}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkAsUnread(alert.id);
+                      }}
+                    >
+                      Mark Unread
+                    </button>
+                  )}
+                  <button
+                    style={{...styles.actionButton, ...styles.deleteButton}}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteAlert(alert.id);
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Details Modal */}
@@ -719,37 +779,31 @@ const AdminAlerts = () => {
             <h2 style={styles.modalTitle}>Alert Details</h2>
             
             <div style={styles.detailRow}>
-              <div style={styles.detailLabel}>Alert ID:</div>
-              <div style={styles.detailValue}>#{selectedAlert.id}</div>
-            </div>
-            <div style={styles.detailRow}>
               <div style={styles.detailLabel}>Type:</div>
               <div style={styles.detailValue}>
-                <span style={styles.typeIcon}>{getTypeIcon(selectedAlert.type)}</span> {selectedAlert.type}
+                <span style={styles.typeIcon}>{selectedAlert.icon || getTypeIcon(selectedAlert.type)}</span> {selectedAlert.type}
               </div>
             </div>
             <div style={styles.detailRow}>
-              <div style={styles.detailLabel}>Severity:</div>
+              <div style={styles.detailLabel}>Priority:</div>
               <div>
                 <span style={{
-                  ...styles.severityBadge,
-                  background: getSeverityColor(selectedAlert.severity)
+                  ...styles.priorityBadge,
+                  background: getPriorityColor(selectedAlert.priority)
                 }}>
-                  {selectedAlert.severity}
+                  {selectedAlert.priority}
                 </span>
               </div>
             </div>
             <div style={styles.detailRow}>
               <div style={styles.detailLabel}>Status:</div>
-              <div>
-                <span style={{
-                  ...styles.statusBadge,
-                  background: `${getStatusColor(selectedAlert.status)}20`,
-                  color: getStatusColor(selectedAlert.status)
-                }}>
-                  {selectedAlert.status}
-                </span>
-              </div>
+              <span style={{
+                ...styles.readBadge,
+                background: selectedAlert.read ? '#22c55e20' : '#eab30820',
+                color: selectedAlert.read ? '#22c55e' : '#eab308'
+              }}>
+                {selectedAlert.read ? 'Read' : 'Unread'}
+              </span>
             </div>
             <div style={styles.detailRow}>
               <div style={styles.detailLabel}>Title:</div>
@@ -761,85 +815,46 @@ const AdminAlerts = () => {
             </div>
             <div style={styles.detailRow}>
               <div style={styles.detailLabel}>Timestamp:</div>
-              <div style={styles.detailValue}>{selectedAlert.timestamp}</div>
+              <div style={styles.detailValue}>{new Date(selectedAlert.timestamp).toLocaleString()}</div>
             </div>
-            {selectedAlert.customer && (
+            {selectedAlert.accountNumber && (
               <div style={styles.detailRow}>
-                <div style={styles.detailLabel}>Customer:</div>
-                <div style={styles.detailValue}>{selectedAlert.customer} (ID: {selectedAlert.customerId})</div>
+                <div style={styles.detailLabel}>Account:</div>
+                <div style={styles.detailValue}>{selectedAlert.accountNumber}</div>
               </div>
             )}
-            {selectedAlert.ipAddress && (
-              <div style={styles.detailRow}>
-                <div style={styles.detailLabel}>IP Address:</div>
-                <div style={styles.detailValue}>{selectedAlert.ipAddress}</div>
-              </div>
-            )}
-            {selectedAlert.location && (
-              <div style={styles.detailRow}>
-                <div style={styles.detailLabel}>Location:</div>
-                <div style={styles.detailValue}>{selectedAlert.location}</div>
-              </div>
-            )}
-            {selectedAlert.amount && (
-              <div style={styles.detailRow}>
-                <div style={styles.detailLabel}>Amount:</div>
-                <div style={styles.detailValue}>${selectedAlert.amount.toLocaleString()}</div>
-              </div>
-            )}
-
-            <div style={styles.detailRow}>
-              <div style={styles.detailLabel}>Acknowledged:</div>
-              <div style={styles.detailValue}>
-                {selectedAlert.acknowledged ? `Yes by ${selectedAlert.acknowledgedBy} at ${selectedAlert.acknowledgedAt}` : 'No'}
-              </div>
-            </div>
-
-            <div style={styles.detailRow}>
-              <div style={styles.detailLabel}>Resolved:</div>
-              <div style={styles.detailValue}>
-                {selectedAlert.resolved ? `Yes by ${selectedAlert.resolvedBy} at ${selectedAlert.resolvedAt}` : 'No'}
-              </div>
-            </div>
-
-            <div style={styles.detailRow}>
-              <div style={styles.detailLabel}>Notes:</div>
-              <div style={styles.detailValue}>{selectedAlert.notes || 'No notes'}</div>
-            </div>
-
-            <textarea
-              style={styles.notesTextarea}
-              placeholder="Add notes..."
-              value={selectedAlert.notes}
-              onChange={(e) => {
-                const updated = {...selectedAlert, notes: e.target.value};
-                setSelectedAlert(updated);
-              }}
-            />
 
             <div style={styles.modalButtons}>
-              {!selectedAlert.acknowledged && selectedAlert.status === 'ACTIVE' && (
+              {!selectedAlert.read && (
                 <button
-                  style={{...styles.actionButton, ...styles.acknowledgeButton}}
+                  style={{...styles.actionButton, ...styles.readButton}}
                   onClick={() => {
-                    handleAcknowledge(selectedAlert.id);
+                    handleMarkAsRead(selectedAlert.id);
                     setShowDetails(false);
                   }}
                 >
-                  Acknowledge
+                  Mark as Read
                 </button>
               )}
-              {selectedAlert.acknowledged && !selectedAlert.resolved && selectedAlert.status === 'ACTIVE' && (
+              {selectedAlert.read && (
                 <button
-                  style={{...styles.actionButton, ...styles.resolveButton}}
+                  style={{...styles.actionButton, ...styles.unreadButton}}
                   onClick={() => {
-                    handleResolve(selectedAlert.id);
+                    handleMarkAsUnread(selectedAlert.id);
                     setShowDetails(false);
                   }}
                 >
-                  Resolve
+                  Mark as Unread
                 </button>
               )}
+              <button
+                style={{...styles.actionButton, ...styles.deleteButton}}
+                onClick={() => {
+                  handleDeleteAlert(selectedAlert.id);
+                }}
+              >
+                Delete
+              </button>
               <button
                 style={styles.backButton}
                 onClick={() => setShowDetails(false)}

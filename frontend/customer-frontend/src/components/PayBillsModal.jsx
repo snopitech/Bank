@@ -11,9 +11,6 @@ const BILLERS = [
   "Mortgage",
   "Car Loan",
   "Student Loan",
-  "Credit Card - Snopitech",
-  "Credit Card - Visa",
-  "Credit Card - MasterCard",
   "Insurance - Auto",
   "Insurance - Home",
   "Insurance - Health",
@@ -35,8 +32,16 @@ export default function PayBillsModal({ accounts, onClose, onSuccess }) {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Helper function to check if account is credit card
+  const isCreditCard = (acc) => {
+    return acc.accountType === "CREDIT" || acc.creditLimit !== undefined;
+  };
 
   const handleSubmit = async () => {
+    setError("");
+    
     if (!biller || !fromAccount || !amount) {
       alert("Please fill all required fields.");
       return;
@@ -44,23 +49,55 @@ export default function PayBillsModal({ accounts, onClose, onSuccess }) {
 
     setLoading(true);
     try {
-      const url = `${API_BASE}/api/accounts/withdraw/account-number?accountNumber=${fromAccount}&amount=${amount}`;
-      const res = await fetch(url, { method: "POST" });
+      // Get the selected account
+      const selectedAccount = accounts?.find(acc => acc.accountNumber === fromAccount);
+      
+      let url;
+      let options = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      };
+
+      // If using credit card to pay bill, use the credit card payment endpoint
+      if (isCreditCard(selectedAccount)) {
+        // Need credit card number from the account
+        const creditCardNumber = selectedAccount.cards?.[0]?.cardNumber || 
+                                 prompt("Enter your credit card number:", "7161098952345123");
+        
+        if (!creditCardNumber) {
+          setLoading(false);
+          return;
+        }
+
+        url = `${API_BASE}/api/credit-card-payments/pay`;
+        options.body = JSON.stringify({
+          cardNumber: creditCardNumber.replace(/\s/g, ''),
+          zipCode: "21054", // You might want to get this from user profile
+          amount: parseFloat(amount),
+          recipientAccountNumber: "BILLER", // This would need to be handled differently for bills
+          description: note || `Payment to ${biller}`
+        });
+      } else {
+        // Regular account withdrawal
+        url = `${API_BASE}/api/accounts/withdraw/account-number?accountNumber=${fromAccount}&amount=${amount}`;
+      }
+
+      const res = await fetch(url, options);
+      const data = await res.json();
 
       if (!res.ok) {
-        const text = await res.text();
-        console.error("Bill payment error:", text);
-        alert("Bill payment failed. Please check console for details.");
-      } else {
-        alert(`Bill payment to ${biller} successful.`);
-        if (onSuccess) {
-          await onSuccess();
-        }
-        onClose();
+        throw new Error(data.error || 'Payment failed');
       }
+
+      alert(`Payment to ${biller} successful.`);
+      if (onSuccess) {
+        await onSuccess();
+      }
+      onClose();
+
     } catch (err) {
       console.error("Bill payment error:", err);
-      alert("An error occurred while processing the bill payment.");
+      setError(err.message || "An error occurred while processing the payment.");
     } finally {
       setLoading(false);
     }
@@ -72,6 +109,12 @@ export default function PayBillsModal({ accounts, onClose, onSuccess }) {
         <h2 className="text-xl font-semibold text-red-700 mb-4">
           Pay Bills
         </h2>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+            {error}
+          </div>
+        )}
 
         <label className="block mb-2 font-medium">Biller</label>
         <select
@@ -96,7 +139,11 @@ export default function PayBillsModal({ accounts, onClose, onSuccess }) {
           <option value="">Select account</option>
           {(accounts || []).map((acc, i) => (
             <option key={i} value={acc.accountNumber}>
-              {acc.accountType} — {acc.accountNumber}
+              {acc.accountType === "CHECKING" && "🏦 "}
+              {acc.accountType === "SAVINGS" && "💰 "}
+              {acc.accountType === "BUSINESS_CHECKING" && "🏢 "}
+              {(acc.accountType === "CREDIT" || acc.creditLimit !== undefined) && "💳 "}
+              {acc.accountType || "Account"} — {acc.accountNumber?.slice(-4) || '****'} (${acc.balance?.toFixed(2) || '0.00'})
             </option>
           ))}
         </select>
@@ -108,13 +155,15 @@ export default function PayBillsModal({ accounts, onClose, onSuccess }) {
           placeholder="0.00"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
+          min="0.01"
+          step="0.01"
         />
 
         <label className="block mb-2 font-medium">Note (optional)</label>
         <input
           type="text"
           className="w-full border rounded px-3 py-2 mb-6"
-          placeholder="e.g. Account #12345"
+          placeholder="e.g., Account #12345"
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />

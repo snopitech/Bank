@@ -11,20 +11,24 @@ import AdminTeller from "./AdminTeller";
 import AdminAudit from "./AdminAudit";
 import AdminReports from "./AdminReports";
 import AdminSettings from "./AdminSettings";
-import AdminFreezeAccount from "./AdminFreezeAccount";
 import AdminUpdateLimits from "./AdminUpdateLimits";
 import AdminGenerateReport from "./AdminGenerateReport";
 import AdminTotalAccounts from "./AdminTotalAccounts";
 import AdminTotalBalance from "./AdminTotalBalance";
 import AdminActiveCards from "./AdminActiveCards";
 import AdminAlerts from "./AdminAlerts";
-import CreateEmployee from "./CreateEmployee"; 
-import EmployeeApproval from "./EmployeeApproval";
-import EmployeeLogin from "./EmployeeLogin";
-import EmployeeDashboard from "./EmployeeDashboard";
 import AdminProfile from "./AdminProfile";
 import AdminBusinessApplications from "./AdminBusinessApplications";
+import AdminCreditApplications from "./AdminCreditApplications"; 
 import AdminUsers from './AdminUsers';
+import AdminTotalUsers from './AdminTotalUsers';
+import AdminCreditRequests from "./AdminCreditRequests"; 
+import EmployeeTOTPSetup from './EmployeeTOTPSetup';
+import AdminUnlockUser from './AdminUnlockUser';
+import AdminNonUSVerifications from "./AdminNonUSVerifications";
+import VerificationDetails from "./VerificationDetails";
+import AdminUSVerifications from "./AdminUSVerifications";
+import AdminLoanApplications from "./AdminLoanApplications";
 
 function App() {
   return (
@@ -34,9 +38,6 @@ function App() {
         <Route path="/" element={<AdminHomepage />} />
         <Route path="/admin" element={<AdminHomepage />} />
         
-        {/* Create Employee Profile */}
-        <Route path="/create-employee" element={<CreateEmployee />} />
-        
         {/* Dashboard */}
         <Route path="/dashboard" element={<AdminDashboard />} />
         
@@ -45,7 +46,7 @@ function App() {
         
         {/* Account Operations */}
         <Route path="/open-account" element={<AdminOpenAccount />} />
-        <Route path="/freeze-account" element={<AdminFreezeAccount />} />
+        {/* REMOVED: /freeze-account route */}
         <Route path="/update-limits" element={<AdminUpdateLimits />} />
         
         {/* Transactions */}
@@ -68,16 +69,36 @@ function App() {
         <Route path="/total-balance" element={<AdminTotalBalance />} />
         <Route path="/active-cards" element={<AdminActiveCards />} />
         <Route path="/alerts" element={<AdminAlerts />} />
+        <Route path="/users" element={<AdminTotalUsers />} />
         
         {/* System */}
         <Route path="/audit" element={<AdminAudit />} />
         <Route path="/settings" element={<AdminSettings />} />
-        <Route path="/employee-approval" element={<EmployeeApproval />} />
-        <Route path="/employee-login" element={<EmployeeLogin />} />
-        <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
         <Route path="/profile" element={<AdminProfile />} />
+        
+        {/* Business Applications */}
         <Route path="/business-applications" element={<AdminBusinessApplications />} />
+        
+        {/* Credit Applications */}
+        <Route path="/credit-applications" element={<AdminCreditApplications />} />
+        
+        {/* Credit Increase Requests - NEW */}
+        <Route path="/credit-increase-requests" element={<AdminCreditRequests />} />
+        
+        {/* User Management */}
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/totp-setup" element={<EmployeeTOTPSetup />} />
+        <Route path="/admin/unlock-user" element={<AdminUnlockUser />} />
+        
+        {/* ⭐ NON-US CITIZEN VERIFICATIONS - THIS IS THE ONE WE'RE TESTING */}
+        <Route path="/admin/non-us-verifications" element={<AdminNonUSVerifications />} />
+        
+        {/* US CITIZEN VERIFICATIONS */}
+        <Route path="/admin/us-verifications" element={<AdminUSVerifications />} />
+        
+        {/* Verification Details (keep if needed) */}
+        <Route path="/admin/verifications/:id" element={<VerificationDetails />} />
+        <Route path="/admin/loan-applications" element={<AdminLoanApplications />} />
       </Routes>
     </BrowserRouter>
   );
