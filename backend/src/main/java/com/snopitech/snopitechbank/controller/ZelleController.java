@@ -204,6 +204,7 @@ public ResponseEntity<?> getEnrollment(@RequestHeader("sessionId") String sessio
  * POST /api/zelle/send
  * Send money via Zelle
  */
+@SuppressWarnings("null")
 @PostMapping("/send")
 public ResponseEntity<?> sendMoney(
         @RequestHeader("sessionId") String sessionId,
