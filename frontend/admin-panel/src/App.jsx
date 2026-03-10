@@ -7,7 +7,7 @@ import AdminTransactions from "./AdminTransactions";
 import AdminSupport from "./AdminSupport";
 import AdminClaims from "./AdminClaims";
 import AdminCurrency from "./AdminCurrency";
-import AdminTeller from "./AdminTeller";
+import TellerOperationsPage from './TellerOperationsPage';
 import AdminAudit from "./AdminAudit";
 import AdminReports from "./AdminReports";
 import AdminSettings from "./AdminSettings";
@@ -29,6 +29,7 @@ import AdminNonUSVerifications from "./AdminNonUSVerifications";
 import VerificationDetails from "./VerificationDetails";
 import AdminUSVerifications from "./AdminUSVerifications";
 import AdminLoanApplications from "./AdminLoanApplications";
+import VerifyChecks from './VerifyChecks';
 
 function App() {
   return (
@@ -51,7 +52,7 @@ function App() {
         
         {/* Transactions */}
         <Route path="/transactions" element={<AdminTransactions />} />
-        <Route path="/teller" element={<AdminTeller />} />
+        <Route path="/teller" element={<TellerOperationsPage />} />
         
         {/* Support & Claims */}
         <Route path="/support" element={<AdminSupport />} />
@@ -99,6 +100,7 @@ function App() {
         {/* Verification Details (keep if needed) */}
         <Route path="/admin/verifications/:id" element={<VerificationDetails />} />
         <Route path="/admin/loan-applications" element={<AdminLoanApplications />} />
+        <Route path="/admin/verify-checks" element={<VerifyChecks />} />
       </Routes>
     </BrowserRouter>
   );

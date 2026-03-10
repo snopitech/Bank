@@ -78,7 +78,7 @@ public String generateTOTP(String secret) {
 }
 
 /**
- * Verify a TOTP code
+ * Verify a TOTP code with extended time window
  * @param secret The Base32 encoded secret
  * @param code The 6-digit code to verify
  * @return true if code is valid
@@ -90,36 +90,74 @@ public boolean verifyTOTP(String secret, String code) {
         return true;
     }
     
-    // Check previous time window (allow for slight time differences)
+    // Check previous time window (30 seconds behind)
+    String previousCode = generateTOTPForTimeOffset(secret, -1);
+    if (previousCode.equals(code)) {
+        return true;
+    }
+    
+    // Check next time window (30 seconds ahead)
+    String nextCode = generateTOTPForTimeOffset(secret, 1);
+    if (nextCode.equals(code)) {
+        return true;
+    }
+    
+    // Check two windows behind (60 seconds) for larger drift
+    String twoWindowsBehindCode = generateTOTPForTimeOffset(secret, -2);
+    if (twoWindowsBehindCode.equals(code)) {
+        return true;
+    }
+    
+    // Check two windows ahead (60 seconds)
+    String twoWindowsAheadCode = generateTOTPForTimeOffset(secret, 2);
+    if (twoWindowsAheadCode.equals(code)) {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Generate TOTP code for a specific time offset
+ * @param secret The Base32 encoded secret
+ * @param windowOffset Number of time windows to offset (positive for future, negative for past)
+ * @return 6-digit TOTP code
+ */
+private String generateTOTPForTimeOffset(String secret, int windowOffset) {
     try {
+        // Decode Base32 secret
         Base32 base32 = new Base32();
         byte[] secretBytes = base32.decode(secret);
-        long timeWindow = Instant.now().getEpochSecond() / TIME_STEP_SECONDS - 1;
         
+        long timeWindow = Instant.now().getEpochSecond() / TIME_STEP_SECONDS;
+        timeWindow += windowOffset;
+        
+        // Convert time window to bytes
         byte[] timeBytes = new byte[8];
         for (int i = 7; i >= 0; i--) {
             timeBytes[i] = (byte) (timeWindow & 0xff);
             timeWindow >>= 8;
         }
         
+        // Calculate HMAC
         SecretKeySpec signingKey = new SecretKeySpec(secretBytes, HMAC_ALGORITHM);
         Mac mac = Mac.getInstance(HMAC_ALGORITHM);
         mac.init(signingKey);
         byte[] hash = mac.doFinal(timeBytes);
         
+        // Get offset and 4 bytes for code
         int offset = hash[hash.length - 1] & 0xf;
         int binary = ((hash[offset] & 0x7f) << 24) |
                     ((hash[offset + 1] & 0xff) << 16) |
                     ((hash[offset + 2] & 0xff) << 8) |
                     (hash[offset + 3] & 0xff);
         
-        int previousCode = binary % (int) Math.pow(10, CODE_DIGITS);
-        String previousCodeStr = String.format("%06d", previousCode);
-        
-        return previousCodeStr.equals(code);
+        // Generate 6-digit code
+        int code = binary % (int) Math.pow(10, CODE_DIGITS);
+        return String.format("%06d", code);
         
     } catch (Exception e) {
-        return false;
+        return "000000"; // Return invalid code on error
     }
 }
 

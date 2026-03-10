@@ -593,7 +593,14 @@ const AdminDashboard = () => {
              >
             ⚙️ System Settings
              </button>
-          
+             <button 
+             style={styles.button}
+             onClick={() => navigate('/admin/verify-checks')}
+             onMouseEnter={(e) => e.currentTarget.style.background = '#5a67d8'}
+             onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
+              >
+            ✅ Verify Checks
+            </button>
             <button 
             style={styles.button}
             onClick={() => navigate('/business-applications')}

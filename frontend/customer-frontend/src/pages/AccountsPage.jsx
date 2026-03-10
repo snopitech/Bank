@@ -53,6 +53,7 @@ import ForeignCurrency from '../components/account-pages/ForeignCurrency';
 import BusinessAccountApplications from '../components/account-pages/BusinessAccountApplications';
 import CreditAccountApplications from '../components/account-pages/CreditAccountApplications'; // Add this import
 import LoanApplicationForm from '../components/account-pages/LoanApplicationForm';
+import CheckDeposit from '../components/account-pages/CheckDeposit';
 
 const AccountsPage = () => {
   const navigate = useNavigate();
@@ -260,6 +261,7 @@ const AccountsPage = () => {
     {
       title: 'Checks & Currency',
       items: [
+        { id: 'deposit-check', label: 'Deposit Check', icon: DocumentTextIcon }, 
         { id: 'order-checks', label: 'Order Checks', icon: DocumentTextIcon },
         { id: 'cashier-check', label: "Cashier's Check", icon: BanknotesIcon },
         { id: 'view-checks', label: 'View Check Copies', icon: DocumentTextIcon }
@@ -399,6 +401,8 @@ const AccountsPage = () => {
         return <CreditAccountApplications />;
       case 'loan-account':
         return <LoanApplicationForm />;
+      case 'deposit-check':
+        return <CheckDeposit />;
       default:
         return (
           <div className="p-4">
