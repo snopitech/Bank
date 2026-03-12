@@ -1,18 +1,40 @@
 
-_________________________
-How to push your code to GitHub
+_________________________________
 
-.
+
+
 git init
-git add .
-use copilot ai to coontinue
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/snopitech/Bank.git
+git push -u origin main
+
+git remote add origin https://github.com/snopitech/Bank.git
+git branch -M main
+git push -u origin main
 
 
-(to keep committing your code)
-git add .
-git commit -m "second commit"
-git push
-___________________________
+After working on code please push to Git by
+git add .  (to add all new changes to  the list of push)
+git commit -m " message " (to prepare all new changes for push)
+git push  (to push your code to GitHub)
+___________________________________________________
+How to clone
+go to git bash, cd to the folder where you want to clone
+you code to,
+Then type git clone "your repo url"
+
+
+_______________________________________________________
+When you have java, node.js and react already installed,
+just clone your code work on it,
+start up react at
+npm install vite --save-dev
+Get-Content package.json
+dir node_modules\.bin\vite*
+node_modules\.bin\vite
+_____________________________
 
 The ports for my frontend
 http://localhost:5173/  for the Admin-panel
@@ -603,7 +625,7 @@ GET	http://localhost:8080/api/admin/us-verifications/test(Test endpoint)
 _______________________________________________________________________________________________
 
 
-APIs for Cleaning up vereification history from HR
+APIs for Cleaning up verification history from HR
 
 DELETE    http://localhost:8080/api/admin/verifications/cleanup?olderThanDays=30(# Delete all verifications older than 30 days)
 DELETE    http://localhost:8080/api/admin/verifications/cleanup (# Delete ALL verifications (use carefully!))
@@ -618,6 +640,34 @@ POST    http://localhost:8080/api/loan/accounts/{id}/transfer (Borrow money)
 POST    http://localhost:8080/api/loan/accounts/{id}/payment (Pay back)
 GET     http://localhost:8080/api/loan/accounts/{id}/payments
 ______________________________________________________________________________________________
+
+APIs for check deposit
+
+POST /api/checks/deposit
+GET /api/checks/user/{userId}
+GET /api/checks/{checkId}
+GET /api/checks/{checkId}
+GET /api/admin/checks/pending
+GET /api/admin/checks/approved
+GET /api/admin/checks/rejected
+GET /api/admin/checks/stats
+GET /api/admin/checks/{checkId}
+POST /api/admin/checks/{checkId}/approve
+POST /api/admin/checks/{checkId}/reject
+____________________________________________________________________________________________
+
+APIs for tellers operation
+
+GET /api/teller/search/users?query={searchTerm}
+GET /api/teller/user/{userId}/accounts
+POST /api/teller/deposit
+POST /api/teller/withdraw
+POST /api/teller/transfer
+____________________________________________________________________________________________
+
+
+
+
 
 
 
