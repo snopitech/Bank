@@ -15,7 +15,10 @@ import {
   ShieldCheckIcon,
   UserCircleIcon,
   DevicePhoneMobileIcon,
-  EnvelopeIcon
+  EnvelopeIcon,
+  CreditCardIcon,
+  BuildingOfficeIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 
 const ManageAlerts = () => {
@@ -23,9 +26,9 @@ const ManageAlerts = () => {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all'); // all, active, paused
-  const [filterType, setFilterType] = useState('all'); // all, security, transaction, account
+  const [filterType, setFilterType] = useState('all'); // all, security, transaction, account, credit, business, loan
 
-  // Mock data with soft, elegant colors
+  // Mock data with soft, elegant colors - UPDATED to include all account types
   useEffect(() => {
     // Simulate API fetch
     setTimeout(() => {
@@ -35,6 +38,7 @@ const ManageAlerts = () => {
           name: 'Large Transaction Alert',
           description: 'Get notified when a transaction over $1,000 occurs',
           type: 'transaction',
+          accountType: 'checking',
           status: 'active',
           frequency: 'instant',
           channels: ['email', 'sms'],
@@ -46,8 +50,9 @@ const ManageAlerts = () => {
         {
           id: 2,
           name: 'Low Balance Warning',
-          description: 'Alert when account balance falls below $500',
+          description: 'Alert when checking account balance falls below $500',
           type: 'account',
+          accountType: 'checking',
           status: 'active',
           frequency: 'instant',
           channels: ['email', 'sms', 'push'],
@@ -61,6 +66,7 @@ const ManageAlerts = () => {
           name: 'Login From New Device',
           description: 'Security alert when account is accessed from unrecognized device',
           type: 'security',
+          accountType: 'all',
           status: 'active',
           frequency: 'instant',
           channels: ['email', 'sms', 'push'],
@@ -70,9 +76,92 @@ const ManageAlerts = () => {
         },
         {
           id: 4,
+          name: 'Credit Card Payment Due',
+          description: 'Reminder when your credit card payment is due',
+          type: 'credit',
+          accountType: 'credit',
+          status: 'active',
+          frequency: 'monthly',
+          channels: ['email', 'sms'],
+          dueDays: 3,
+          lastTriggered: '2026-02-15T09:00:00',
+          color: 'purple',
+          icon: '💳'
+        },
+        {
+          id: 5,
+          name: 'Business Account Deposit',
+          description: 'Get notified when a deposit is made to your business account',
+          type: 'business',
+          accountType: 'business',
+          status: 'active',
+          frequency: 'instant',
+          channels: ['email', 'sms'],
+          lastTriggered: '2026-02-12T14:20:00',
+          color: 'green',
+          icon: '🏢'
+        },
+        {
+          id: 6,
+          name: 'Loan Payment Reminder',
+          description: 'Reminder when your loan payment is due',
+          type: 'loan',
+          accountType: 'loan',
+          status: 'active',
+          frequency: 'monthly',
+          channels: ['email', 'sms'],
+          dueDays: 5,
+          lastTriggered: '2026-02-01T10:00:00',
+          color: 'amber',
+          icon: '📊'
+        },
+        {
+          id: 7,
+          name: 'Credit Card Large Purchase',
+          description: 'Alert for credit card purchases over $500',
+          type: 'credit',
+          accountType: 'credit',
+          status: 'active',
+          frequency: 'instant',
+          channels: ['sms', 'push'],
+          threshold: 500,
+          lastTriggered: '2026-02-09T18:30:00',
+          color: 'purple',
+          icon: '💳'
+        },
+        {
+          id: 8,
+          name: 'Business Account Low Balance',
+          description: 'Alert when business account falls below $1,000',
+          type: 'business',
+          accountType: 'business',
+          status: 'paused',
+          frequency: 'instant',
+          channels: ['email'],
+          threshold: 1000,
+          lastTriggered: '2026-01-25T11:15:00',
+          color: 'green',
+          icon: '🏢'
+        },
+        {
+          id: 9,
+          name: 'Loan Interest Rate Change',
+          description: 'Notification when your loan interest rate changes',
+          type: 'loan',
+          accountType: 'loan',
+          status: 'active',
+          frequency: 'instant',
+          channels: ['email'],
+          lastTriggered: '2026-02-05T13:45:00',
+          color: 'amber',
+          icon: '📊'
+        },
+        {
+          id: 10,
           name: 'Weekly Spending Summary',
-          description: 'Receive a summary of your weekly spending every Monday',
+          description: 'Receive a summary of your weekly spending across all accounts',
           type: 'transaction',
+          accountType: 'all',
           status: 'paused',
           frequency: 'weekly',
           channels: ['email'],
@@ -81,10 +170,11 @@ const ManageAlerts = () => {
           icon: '📊'
         },
         {
-          id: 5,
+          id: 11,
           name: 'Password Change Alert',
           description: 'Get notified when your password is changed',
           type: 'security',
+          accountType: 'all',
           status: 'active',
           frequency: 'instant',
           channels: ['email', 'sms'],
@@ -93,10 +183,11 @@ const ManageAlerts = () => {
           icon: '🔑'
         },
         {
-          id: 6,
+          id: 12,
           name: 'Monthly Statement Ready',
           description: 'Notification when your monthly statement is available',
           type: 'account',
+          accountType: 'checking',
           status: 'active',
           frequency: 'monthly',
           channels: ['email'],
@@ -105,10 +196,11 @@ const ManageAlerts = () => {
           icon: '📄'
         },
         {
-          id: 7,
+          id: 13,
           name: 'Foreign Transaction Alert',
           description: 'Alert when a transaction is made outside your home country',
           type: 'transaction',
+          accountType: 'all',
           status: 'paused',
           frequency: 'instant',
           channels: ['sms', 'push'],
@@ -116,6 +208,19 @@ const ManageAlerts = () => {
           lastTriggered: '2026-01-15T11:30:00',
           color: 'gray',
           icon: '🌍'
+        },
+        {
+          id: 14,
+          name: 'Savings Goal Progress',
+          description: 'Updates on your savings account goal progress',
+          type: 'account',
+          accountType: 'savings',
+          status: 'active',
+          frequency: 'weekly',
+          channels: ['email', 'push'],
+          lastTriggered: '2026-02-13T09:00:00',
+          color: 'blue',
+          icon: '🎯'
         }
       ]);
       setLoading(false);
@@ -139,6 +244,9 @@ const ManageAlerts = () => {
       case 'security': return <ShieldCheckIcon className="h-4 w-4" />;
       case 'transaction': return <CurrencyDollarIcon className="h-4 w-4" />;
       case 'account': return <UserCircleIcon className="h-4 w-4" />;
+      case 'credit': return <CreditCardIcon className="h-4 w-4" />;
+      case 'business': return <BuildingOfficeIcon className="h-4 w-4" />;
+      case 'loan': return <DocumentTextIcon className="h-4 w-4" />;
       default: return <BellIcon className="h-4 w-4" />;
     }
   };
@@ -150,6 +258,32 @@ const ManageAlerts = () => {
       case 'push': return <BellIcon className="h-3 w-3" />;
       default: return null;
     }
+  };
+
+  const getAccountTypeBadge = (accountType) => {
+    const colors = {
+      checking: 'bg-blue-50 text-blue-700 border-blue-200',
+      savings: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+      credit: 'bg-purple-50 text-purple-700 border-purple-200',
+      business: 'bg-green-50 text-green-700 border-green-200',
+      loan: 'bg-amber-50 text-amber-700 border-amber-200',
+      all: 'bg-gray-50 text-gray-600 border-gray-200'
+    };
+    
+    const labels = {
+      checking: 'Checking',
+      savings: 'Savings',
+      credit: 'Credit',
+      business: 'Business',
+      loan: 'Loan',
+      all: 'All Accounts'
+    };
+    
+    return (
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${colors[accountType] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+        {labels[accountType] || accountType}
+      </span>
+    );
   };
 
   const getStatusBadge = (status) => {
@@ -174,12 +308,18 @@ const ManageAlerts = () => {
     const colors = {
       security: 'bg-indigo-50 text-indigo-700 border-indigo-200',
       transaction: 'bg-amber-50 text-amber-700 border-amber-200',
-      account: 'bg-sky-50 text-sky-700 border-sky-200'
+      account: 'bg-sky-50 text-sky-700 border-sky-200',
+      credit: 'bg-purple-50 text-purple-700 border-purple-200',
+      business: 'bg-green-50 text-green-700 border-green-200',
+      loan: 'bg-amber-50 text-amber-700 border-amber-200'
     };
     const labels = {
       security: 'Security',
       transaction: 'Transaction',
-      account: 'Account'
+      account: 'Account',
+      credit: 'Credit Card',
+      business: 'Business',
+      loan: 'Loan'
     };
     
     return (
@@ -198,6 +338,13 @@ const ManageAlerts = () => {
 
   const activeCount = alerts.filter(a => a.status === 'active').length;
   const pausedCount = alerts.filter(a => a.status === 'paused').length;
+  
+  // Counts by account type
+  const checkingCount = alerts.filter(a => a.accountType === 'checking' || a.accountType === 'all').length;
+  const savingsCount = alerts.filter(a => a.accountType === 'savings' || a.accountType === 'all').length;
+  const creditCount = alerts.filter(a => a.accountType === 'credit' || a.accountType === 'all').length;
+  const businessCount = alerts.filter(a => a.accountType === 'business' || a.accountType === 'all').length;
+  const loanCount = alerts.filter(a => a.accountType === 'loan' || a.accountType === 'all').length;
 
   if (loading) {
     return (
@@ -218,7 +365,7 @@ const ManageAlerts = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-light text-gray-800 mb-1">Alert Preferences</h2>
-            <p className="text-sm text-gray-500">Manage how and when you receive notifications</p>
+            <p className="text-sm text-gray-500">Manage how and when you receive notifications for all your accounts</p>
           </div>
           <button className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition flex items-center shadow-sm">
             <PlusIcon className="h-4 w-4 mr-1.5" />
@@ -227,61 +374,109 @@ const ManageAlerts = () => {
         </div>
       </div>
 
-      {/* Stats with muted colors */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+      {/* Stats with muted colors - UPDATED to include all account types */}
+      <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total Alerts</p>
-              <p className="text-2xl font-light text-gray-800">{alerts.length}</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total</p>
+              <p className="text-xl font-light text-gray-800">{alerts.length}</p>
             </div>
-            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-              <BellIcon className="h-5 w-5 text-gray-500" />
+            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+              <BellIcon className="h-4 w-4 text-gray-500" />
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Active</p>
-              <p className="text-2xl font-light text-gray-800">{activeCount}</p>
+              <p className="text-xl font-light text-gray-800">{activeCount}</p>
             </div>
-            <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center">
-              <span className="w-3 h-3 bg-emerald-500 rounded-full"></span>
+            <div className="w-8 h-8 bg-emerald-50 rounded-full flex items-center justify-center">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Paused</p>
-              <p className="text-2xl font-light text-gray-800">{pausedCount}</p>
+              <p className="text-xl font-light text-gray-800">{pausedCount}</p>
             </div>
-            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-              <BellSnoozeIcon className="h-5 w-5 text-gray-500" />
+            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+              <BellSnoozeIcon className="h-4 w-4 text-gray-500" />
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Last 24h</p>
-              <p className="text-2xl font-light text-gray-800">3</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Checking</p>
+              <p className="text-xl font-light text-gray-800">{checkingCount}</p>
             </div>
-            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
-              <ClockIcon className="h-5 w-5 text-blue-500" />
+            <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center">
+              <span className="text-xs text-blue-600">🏦</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Savings</p>
+              <p className="text-xl font-light text-gray-800">{savingsCount}</p>
+            </div>
+            <div className="w-8 h-8 bg-cyan-50 rounded-full flex items-center justify-center">
+              <span className="text-xs text-cyan-600">💰</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Credit</p>
+              <p className="text-xl font-light text-gray-800">{creditCount}</p>
+            </div>
+            <div className="w-8 h-8 bg-purple-50 rounded-full flex items-center justify-center">
+              <span className="text-xs text-purple-600">💳</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Business</p>
+              <p className="text-xl font-light text-gray-800">{businessCount}</p>
+            </div>
+            <div className="w-8 h-8 bg-green-50 rounded-full flex items-center justify-center">
+              <span className="text-xs text-green-600">🏢</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Loan</p>
+              <p className="text-xl font-light text-gray-800">{loanCount}</p>
+            </div>
+            <div className="w-8 h-8 bg-amber-50 rounded-full flex items-center justify-center">
+              <span className="text-xs text-amber-600">📊</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filters - soft and subtle */}
+      {/* Filters - soft and subtle - UPDATED with new types */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 flex-wrap gap-2">
             <button
               onClick={() => setFilterStatus('all')}
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
@@ -314,7 +509,7 @@ const ManageAlerts = () => {
             </button>
           </div>
           
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 flex-wrap gap-2">
             <button
               onClick={() => setFilterType('all')}
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
@@ -355,6 +550,36 @@ const ManageAlerts = () => {
             >
               Account
             </button>
+            <button
+              onClick={() => setFilterType('credit')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                filterType === 'credit' 
+                  ? 'bg-purple-700 text-white' 
+                  : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+              }`}
+            >
+              Credit
+            </button>
+            <button
+              onClick={() => setFilterType('business')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                filterType === 'business' 
+                  ? 'bg-green-700 text-white' 
+                  : 'bg-green-50 text-green-700 hover:bg-green-100'
+              }`}
+            >
+              Business
+            </button>
+            <button
+              onClick={() => setFilterType('loan')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                filterType === 'loan' 
+                  ? 'bg-amber-700 text-white' 
+                  : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+              }`}
+            >
+              Loan
+            </button>
           </div>
         </div>
       </div>
@@ -376,6 +601,7 @@ const ManageAlerts = () => {
                     <div className="flex items-center gap-1.5 ml-2">
                       {getStatusBadge(alert.status)}
                       {getTypeBadge(alert.type)}
+                      {getAccountTypeBadge(alert.accountType)}
                     </div>
                   </div>
                   
@@ -391,6 +617,13 @@ const ManageAlerts = () => {
                       <div className="flex items-center text-gray-500">
                         <CurrencyDollarIcon className="h-3.5 w-3.5 mr-1" />
                         ${alert.threshold.toLocaleString()}+
+                      </div>
+                    )}
+                    
+                    {alert.dueDays && (
+                      <div className="flex items-center text-gray-500">
+                        <span className="mr-1">⏰</span>
+                        {alert.dueDays} days before due
                       </div>
                     )}
                     
@@ -452,19 +685,65 @@ const ManageAlerts = () => {
                   </div>
                   
                   <div>
-                    <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Threshold Settings</h4>
+                    <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
+                      {alert.type === 'credit' ? 'Credit Card Settings' : 
+                       alert.type === 'business' ? 'Business Account Settings' :
+                       alert.type === 'loan' ? 'Loan Settings' : 'Threshold Settings'}
+                    </h4>
                     <div className="space-y-3">
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1">Minimum amount</label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                      {alert.type === 'credit' && (
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Minimum purchase amount</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                            <input
+                              type="number"
+                              defaultValue={alert.threshold || 100}
+                              className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-800 focus:border-gray-800 text-sm"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {alert.type === 'business' && (
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Minimum transaction amount</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                            <input
+                              type="number"
+                              defaultValue={alert.threshold || 500}
+                              className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-800 focus:border-gray-800 text-sm"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {alert.type === 'loan' && (
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Days before due date</label>
                           <input
                             type="number"
-                            defaultValue={alert.threshold || 0}
-                            className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-800 focus:border-gray-800 text-sm"
+                            defaultValue={alert.dueDays || 5}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-800 focus:border-gray-800 text-sm"
                           />
                         </div>
-                      </div>
+                      )}
+                      
+                      {(alert.type === 'transaction' || alert.type === 'account') && (
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Minimum amount</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                            <input
+                              type="number"
+                              defaultValue={alert.threshold || 0}
+                              className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-800 focus:border-gray-800 text-sm"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
                       <div>
                         <label className="block text-sm text-gray-600 mb-1">Frequency</label>
                         <select className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-gray-800 focus:border-gray-800 text-sm">
@@ -525,8 +804,8 @@ const ManageAlerts = () => {
               <BellIcon className="h-5 w-5 text-gray-500" />
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-800 mb-1">Never miss important updates</h3>
-              <p className="text-xs text-gray-500">Customize how and when you receive notifications</p>
+              <h3 className="text-sm font-medium text-gray-800 mb-1">Stay on top of all your accounts</h3>
+              <p className="text-xs text-gray-500">Customize alerts for checking, savings, credit, business, and loan accounts</p>
             </div>
           </div>
           <button className="px-4 py-2 border border-gray-300 hover:border-gray-400 text-gray-700 rounded-lg text-sm font-medium transition bg-white hover:bg-gray-50">

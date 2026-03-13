@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.beans.factory.annotation.Value;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -42,6 +43,7 @@ public class AuthController {
     private final UserService userService;
     private final EmailService emailService;
     private final VerificationService verificationService;
+ 
     @Autowired
     private PendingVerificationRepository pendingVerificationRepository;
 
@@ -59,7 +61,10 @@ public AuthController(UserRepository userRepository,
     this.verificationService = verificationService;
 }
 
-    // ========== LOGIN ==========
+// ⭐ Move these lines AFTER the constructor, but BEFORE the login method
+@Value("${app.frontend.url:http://localhost:5173}")
+private String frontendUrl;
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
@@ -280,7 +285,7 @@ public AuthController(UserRepository userRepository,
             userRepository.save(user);
             
             // Send verification email to OLD email
-            String verificationLink = "http://localhost:5173/verify-email-change?token=" + token + "&newEmail=" + request.getNewEmail();
+            String verificationLink = frontendUrl + "/verify-email-change?token=" + token + "&newEmail=" + request.getNewEmail();
             emailService.sendEmailChangeVerification(
                 request.getCurrentEmail(), 
                 user.getFirstName(), 

@@ -58,7 +58,7 @@ public class LoanAccountController {
                 map.put("approvedAmount", account.getApprovedAmount());
                 map.put("outstandingBalance", account.getOutstandingBalance());
                 map.put("monthlyPayment", account.getMonthlyPayment());
-                map.put("interestRate", account.getInterestRate());
+                map.put("interestRate", 2.5); // Hardcode to 2.5%
                 map.put("nextPaymentDate", account.getNextPaymentDate());
                 map.put("paymentsMade", account.getPaymentsMade());
                 map.put("totalPayments", account.getTotalPayments());

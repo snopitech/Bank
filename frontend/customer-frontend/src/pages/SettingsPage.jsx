@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // src/pages/SettingsPage.jsx - FULLY UPDATED WITH PROFILE PAGE STYLING
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +18,12 @@ function SettingsPage() {
   const [transactions, setTransactions] = useState([]);
   const [transactionsLoading, setTransactionsLoading] = useState(true);
   
+  // ⭐ Account states for all account types
+  const [regularAccounts, setRegularAccounts] = useState([]);
+  const [businessAccounts, setBusinessAccounts] = useState([]);
+  const [creditAccounts, setCreditAccounts] = useState([]);
+  const [loanAccounts, setLoanAccounts] = useState([]);
+  
   // ⭐ ADD Contact Modal Hook
   const { toggleInlineForm, isInlineExpanded, inlineUserData, inlinePresetCategory, inlinePresetSubject } = useContactModal();
   
@@ -27,7 +34,7 @@ function SettingsPage() {
   // Email Change State
   const [showEmailChange, setShowEmailChange] = useState(false);
   const [newEmail, setNewEmail] = useState("");
-  const [emailMessage, setEmailMessage] = useState("");
+  const [emailMessage, setEmailMessage] = useState({ text: "", type: "" });
   const [isChangingEmail, setIsChangingEmail] = useState(false);
   
   // General messages
@@ -61,6 +68,42 @@ function SettingsPage() {
     toggleInlineForm(prefillData);
   };
 
+  // ⭐ Fetch all account types
+  const fetchAllAccounts = async (userId) => {
+    try {
+      // Fetch regular accounts (from user object)
+      const userResponse = await fetch(`${API_BASE}/api/users/${userId}`);
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        setRegularAccounts(userData.accounts || []);
+      }
+      // Fetch business accounts
+       const businessResponse = await fetch(`${API_BASE}/api/business/accounts/user/${userId}`);
+       if (businessResponse.ok) {
+       const businessData = await businessResponse.json();
+       console.log("Business accounts from API:", businessData);
+       setBusinessAccounts(businessData || []);
+       } else {
+      console.log("Business accounts response not OK:", businessResponse.status);
+       }
+      // Fetch credit accounts
+      const creditResponse = await fetch(`${API_BASE}/api/credit/accounts/user/${userId}`);
+      if (creditResponse.ok) {
+        const creditData = await creditResponse.json();
+        setCreditAccounts(creditData || []);
+      }
+      
+      // Fetch loan accounts
+      const loanResponse = await fetch(`${API_BASE}/api/loan/accounts/user/${userId}`);
+      if (loanResponse.ok) {
+        const loanData = await loanResponse.json();
+        setLoanAccounts(loanData || []);
+      }
+    } catch (error) {
+      console.error("Error fetching accounts:", error);
+    }
+  };
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -71,6 +114,8 @@ function SettingsPage() {
         }
         
         setUser(loggedInUser);
+        // Fetch all account types
+        fetchAllAccounts(loggedInUser.id);
         loadUserTransactions(loggedInUser.id);
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -80,39 +125,24 @@ function SettingsPage() {
     fetchUserData();
   }, [navigate]);
 
+  // ⭐ UPDATED: Simplified transaction loading using the correct API endpoint
   const loadUserTransactions = async (userId) => {
     try {
       setTransactionsLoading(true);
-      const loggedInUser = JSON.parse(localStorage.getItem("loggedInUser"));
-      const token = loggedInUser?.sessionId;
       
-      // Get user's accounts first
-      const accountsResponse = await fetch(`${API_BASE}/api/users/${userId}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
+      // Direct call to get user transactions
+      const transactionsResponse = await fetch(`${API_BASE}/api/users/${userId}/transactions`);
       
-      if (accountsResponse.ok) {
-        const userData = await accountsResponse.json();
-        
-        if (userData.accounts && userData.accounts.length > 0) {
-          // Get transactions for the first account (typically checking account)
-          const accountId = userData.accounts[0].id;
-          const transactionsResponse = await fetch(`${API_BASE}/api/accounts/${accountId}/transactions`, {
-            headers: {
-              "Authorization": `Bearer ${token}`
-            }
-          });
-          
-          if (transactionsResponse.ok) {
-            const transactionsData = await transactionsResponse.json();
-            setTransactions(transactionsData);
-          }
-        }
+      if (transactionsResponse.ok) {
+        const transactionsData = await transactionsResponse.json();
+        setTransactions(transactionsData);
+      } else {
+        console.error("Failed to load transactions:", transactionsResponse.status);
+        setTransactions([]);
       }
     } catch (error) {
       console.error("Error loading transactions:", error);
+      setTransactions([]);
     } finally {
       setTransactionsLoading(false);
     }
@@ -274,14 +304,26 @@ function SettingsPage() {
     }
   };
 
-  const calculateTotalBalance = () => {
-    if (!user?.accounts) return 0;
-    return user.accounts.reduce((total, account) => total + (account.balance || 0), 0);
-  };
+ // ⭐ UPDATED: Calculate total balance from all account types
+const calculateTotalBalance = () => {
+  const regularTotal = regularAccounts.reduce((total, account) => total + (account.balance || 0), 0);
+  const creditTotal = creditAccounts.reduce((total, account) => total + (account.currentBalance || account.balance || 0), 0);
+  const loanTotal = loanAccounts.reduce((total, account) => total + (account.balance || 0), 0);
+  const businessTotal = businessAccounts.reduce((total, account) => total + (account.accountBalance || account.balance || 0), 0);
+  return regularTotal + creditTotal + loanTotal + businessTotal;
+};
 
-  const calculateTotalAccounts = () => {
-    return user?.accounts?.length || 0;
-  };
+ // ⭐ UPDATED: Calculate total accounts count from all types
+const calculateTotalAccounts = () => {
+  const regular = regularAccounts.length || 0;
+  const credit = creditAccounts.length || 0;
+  const loan = loanAccounts.length || 0;
+  const business = businessAccounts.length || 0;
+  
+  console.log("Account counts - Regular:", regular, "Credit:", credit, "Loan:", loan, "Business:", business, "Total:", regular + credit + loan + business);
+  
+  return regular + credit + loan + business;
+};
 
   if (loading) {
     return <LoadingScreen />;
@@ -496,14 +538,14 @@ function SettingsPage() {
                               </div>
                               <div>
                                 <p className="text-sm sm:text-base font-bold text-gray-900 group-hover:text-orange-600">
-                                  {transaction.description || `${transaction.type} Transaction`}
+                                  {transaction.description || `${transaction.type || 'Transaction'}`}
                                 </p>
                                 <div className="flex items-center space-x-2 sm:space-x-3 mt-1 sm:mt-2">
                                   <span className={`px-2 sm:px-3 py-1 text-xs font-bold rounded-full ${getTransactionTypeColor(transaction.type)}`}>
                                     {transaction.type || 'TRANSACTION'}
                                   </span>
                                   <span className="text-xs sm:text-sm text-gray-500">
-                                    {formatDate(transaction.transactionDate)}
+                                    {formatDate(transaction.timestamp || transaction.transactionDate)}
                                   </span>
                                 </div>
                               </div>

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // src/pages/VerifyEmailChange.jsx - UPDATED VERSION
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -34,15 +35,16 @@ function AlertsPage() {
         // Transform API data to match your component's expected format
         const transformedAlerts = data.map(alert => ({
           id: alert.id,
-          type: alert.type.toLowerCase(),
-          priority: alert.priority.toLowerCase(),
+          type: alert.type?.toLowerCase() || 'notice',
+          priority: alert.priority?.toLowerCase() || 'medium',
           title: alert.title,
           message: alert.message,
           date: alert.timestamp,
-          read: alert.read,
+          read: alert.isRead || false,  // ⭐ IMPORTANT: Use isRead from backend
           icon: alert.icon || getDefaultIcon(alert.type),
           color: alert.color || getDefaultColor(alert.type),
           account: alert.accountNumber ? `****${alert.accountNumber.slice(-4)}` : null,
+          accountId: alert.accountId,
           action: alert.actionText,
           actionUrl: alert.actionUrl
         }));
@@ -63,7 +65,7 @@ function AlertsPage() {
       const response = await fetch(`${API_BASE}/api/alerts/user/${user.id}/unread/count`);
       if (response.ok) {
         const data = await response.json();
-        setUnreadCount(data.count);
+        setUnreadCount(data.count || 0);
       }
     } catch (error) {
       console.error("Error fetching unread count:", error);
@@ -173,18 +175,32 @@ function AlertsPage() {
       case 'security': return '🔒';
       case 'account': return '🏦';
       case 'notice': return '📢';
+      case 'credit': return '💳';
+      case 'business': return '🏢';
+      case 'loan': return '📊';
       default: return '📌';
     }
   };
 
   const getDefaultColor = (type) => {
     switch(type?.toLowerCase()) {
-      case 'transaction': return 'green';
+      case 'transaction': return 'blue';
       case 'security': return 'red';
-      case 'account': return 'blue';
+      case 'account': return 'green';
       case 'notice': return 'purple';
+      case 'credit': return 'purple';
+      case 'business': return 'green';
+      case 'loan': return 'orange';
       default: return 'gray';
     }
+  };
+
+  const getAccountTypeFromMessage = (message) => {
+    const msg = message?.toLowerCase() || '';
+    if (msg.includes('credit')) return 'credit';
+    if (msg.includes('business')) return 'business';
+    if (msg.includes('loan')) return 'loan';
+    return 'regular';
   };
 
   // ============== UI HELPER FUNCTIONS ==============
@@ -217,6 +233,9 @@ function AlertsPage() {
       case 'security': return 'Security';
       case 'account': return 'Account';
       case 'notice': return 'Notice';
+      case 'credit': return 'Credit Card';
+      case 'business': return 'Business';
+      case 'loan': return 'Loan';
       default: return type;
     }
   };
@@ -278,6 +297,21 @@ function AlertsPage() {
     if (filter !== "all") {
       if (filter === "unread") {
         result = result.filter(alert => !alert.read);
+      } else if (filter === "credit") {
+        result = result.filter(alert => 
+          alert.message?.toLowerCase().includes('credit') ||
+          alert.type?.toLowerCase() === 'credit'
+        );
+      } else if (filter === "business") {
+        result = result.filter(alert => 
+          alert.message?.toLowerCase().includes('business') ||
+          alert.type?.toLowerCase() === 'business'
+        );
+      } else if (filter === "loan") {
+        result = result.filter(alert => 
+          alert.message?.toLowerCase().includes('loan') ||
+          alert.type?.toLowerCase() === 'loan'
+        );
       } else {
         result = result.filter(alert => alert.type === filter);
       }
@@ -395,12 +429,12 @@ function AlertsPage() {
             </div>
           </div>
           
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+          {/* Quick Stats - Updated to include all account types */}
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 sm:gap-6 mb-8">
             <div className="bg-gradient-to-r from-pink-400 to-pink-500 text-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-pink-100 text-xs sm:text-sm font-medium">Unread Alerts</p>
+                  <p className="text-pink-100 text-xs sm:text-sm font-medium">Unread</p>
                   <p className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2">{unreadCount}</p>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/20 rounded-full flex items-center justify-center">
@@ -420,7 +454,7 @@ function AlertsPage() {
             <div className="bg-gradient-to-r from-blue-400 to-blue-500 text-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-xs sm:text-sm font-medium">Transaction Alerts</p>
+                  <p className="text-blue-100 text-xs sm:text-sm font-medium">Transaction</p>
                   <p className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2">
                     {alerts.filter(a => a.type === 'transaction').length}
                   </p>
@@ -431,16 +465,16 @@ function AlertsPage() {
               </div>
             </div>
             
-            <div className="bg-gradient-to-r from-orange-400 to-orange-500 text-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
+            <div className="bg-gradient-to-r from-purple-400 to-purple-500 text-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-orange-100 text-xs sm:text-sm font-medium">Security Alerts</p>
+                  <p className="text-purple-100 text-xs sm:text-sm font-medium">Credit Card</p>
                   <p className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2">
-                    {alerts.filter(a => a.type === 'security').length}
+                    {alerts.filter(a => a.message?.toLowerCase().includes('credit')).length}
                   </p>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  <span className="text-lg sm:text-xl md:text-2xl">🔒</span>
+                  <span className="text-lg sm:text-xl md:text-2xl">💳</span>
                 </div>
               </div>
             </div>
@@ -448,13 +482,41 @@ function AlertsPage() {
             <div className="bg-gradient-to-r from-green-400 to-green-500 text-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-100 text-xs sm:text-sm font-medium">Total Alerts</p>
-                  <p className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2">{alerts.length}</p>
+                  <p className="text-green-100 text-xs sm:text-sm font-medium">Business</p>
+                  <p className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2">
+                    {alerts.filter(a => a.message?.toLowerCase().includes('business')).length}
+                  </p>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+                  <span className="text-lg sm:text-xl md:text-2xl">🏢</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-r from-amber-400 to-amber-500 text-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-amber-100 text-xs sm:text-sm font-medium">Loan</p>
+                  <p className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2">
+                    {alerts.filter(a => a.message?.toLowerCase().includes('loan')).length}
+                  </p>
+                </div>
+                <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <span className="text-lg sm:text-xl md:text-2xl">📊</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-r from-orange-400 to-orange-500 text-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-100 text-xs sm:text-sm font-medium">Security</p>
+                  <p className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2">
+                    {alerts.filter(a => a.type === 'security').length}
+                  </p>
+                </div>
+                <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <span className="text-lg sm:text-xl md:text-2xl">🔒</span>
                 </div>
               </div>
             </div>
@@ -499,6 +561,36 @@ function AlertsPage() {
                 }`}
               >
                 Transaction
+              </button>
+              <button
+                onClick={() => setFilter("credit")}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-all ${
+                  filter === "credit" 
+                    ? "bg-purple-400 text-white shadow" 
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Credit
+              </button>
+              <button
+                onClick={() => setFilter("business")}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-all ${
+                  filter === "business" 
+                    ? "bg-green-400 text-white shadow" 
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Business
+              </button>
+              <button
+                onClick={() => setFilter("loan")}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-all ${
+                  filter === "loan" 
+                    ? "bg-amber-400 text-white shadow" 
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Loan
               </button>
               <button
                 onClick={() => setFilter("security")}
@@ -598,6 +690,9 @@ function AlertsPage() {
               <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800">
                 {filter === "all" ? "All Alerts" : 
                  filter === "unread" ? "Unread Alerts" : 
+                 filter === "credit" ? "Credit Card Alerts" :
+                 filter === "business" ? "Business Account Alerts" :
+                 filter === "loan" ? "Loan Account Alerts" :
                  `${getAlertTypeLabel(filter)} Alerts`}
                 <span className="text-gray-600 text-sm sm:text-lg font-normal ml-1 sm:ml-2">
                   ({filteredAlerts.length})
@@ -644,7 +739,10 @@ function AlertsPage() {
                                   {alert.priority.toUpperCase()}
                                 </span>
                                 <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-full whitespace-nowrap">
-                                  {getAlertTypeLabel(alert.type)}
+                                  {getAccountTypeFromMessage(alert.message) === 'credit' ? '💳 Credit' :
+                                   getAccountTypeFromMessage(alert.message) === 'business' ? '🏢 Business' :
+                                   getAccountTypeFromMessage(alert.message) === 'loan' ? '📊 Loan' :
+                                   getAlertTypeLabel(alert.type)}
                                 </span>
                               </div>
                               
@@ -736,16 +834,6 @@ function AlertsPage() {
             </div>
           </div>
         )}
-        
-        {/* Help Section - Keep as is */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-8 sm:mb-12">
-          {/* ... (keep your existing help section code) ... */}
-        </div>
-        
-        {/* Footer - Keep as is */}
-        <div className="pt-6 sm:pt-8 border-t border-gray-200">
-          {/* ... (keep your existing footer code) ... */}
-        </div>
       </main>
 
       <Footer />

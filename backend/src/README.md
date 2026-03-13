@@ -1,52 +1,119 @@
 
-_________________________________
+_________________________________________________________________________________
+
+To build Application, The first thing is to go to GitHub and signup for an account with your Gmail.
+Create a repository for the project like "Bank"
+The Banking Project that I building is a web application design to function like a real world banking system.
+The layout is we are going to have one backend built with Java and spring-boot;
+Three frontend UI built with react + vite. (Customer-frontend, admin-panel, and Hr-dashboard)
+we will be connecting one database which is MySQL database with community edition( this is free and good for banking App)
+
+We will build this project with IDE called vscode. this is a popular IDE and people think that it is associated only to frontend
+The truth of the matter is, vscode is the best IDE for software development, it makes this whole journey simple and straight forward,
+You can actually do everything as in the backend and the frontend all in one IDE like vscode.
+Other IDE's like eclipse, IntelliJ e.t.c might be built specifically good for backend projects. since we are using react + vite, i believe VSCode is 
+the best for the job and also good to keep everything in one work space.
+
+we can start by installing msql server community edition with all package including MySQL workbench for the query IDE
+Please do not need to add the path in environmental variable, but in this case I am add adding it to my environmental vari.
+able path
+
+After that, I will  be installing VSCode to handle my backend and frontend codes
+
+For the backend, since I am using java and spring-boot, I will be installing java 17 from vscode terminal
+first we will create a folder in the desktop and Name it SnopitechBank
+under SnopitechBank we will create Two sub main folders called the Backend and Frontend
+Under the Frontend, we will create 3 sub folders name them (Customer-frontend, admin-panel, and Hr-dashboard)
+In this way we have all folders and all files organized.
+
+For the backend install java by typing   winget install EclipseAdoptium.Temurin.17.JDK (vscode terminal)(this will install java)
+The goal is to make sure that you can see java from vscode terminal
+go to your folder where and find where the java is been intalled
+
+copy the path and add it to your environmental variable
+in the system variable part
+see Variable Name : JAVA_HOME
+    Value         : C:\Program Files\Eclipse Adoptium\jdk-17.0.18.8-hotspot
+    Path          :C:\Program Files\Eclipse Adoptium\jdk-17.0.18.8-hotspot\bin 
+
+Then in your vscode add path to setting.json
+Crl + S + P and paste Preferences: Open Settings (JSON)
+select for users and paste
+{
+"terminal.integrated.defaultProfile.windows": "Command Prompt",
+"terminal.integrated.profiles.windows": {
+    "Command Prompt": {
+        "path": "C:\\Windows\\System32\\cmd.exe"
+    }
+}
+}
+save and exit vscode and restart it again
+go to new new terminal and run java -version (The java version should pop up now)
 
 
+Next install the spring-boot package from vscode extension
 
-git init
-git add README.md
-git commit -m "first commit"
-git branch -M main
-git remote add origin https://github.com/snopitech/Bank.git
-git push -u origin main
+Spring Boot Extension Pack (Microsoft)
+Spring Boot Dashboard (Microsoft)
+Spring Initializr (Microsoft)
+Spring Boot Tools (Microsoft)
+Language Support for Java™ by Red Hat
+Debugger for Java (Microsoft)
+Maven for Java (Microsoft)
+Java Test Runner (Microsoft)
+Optional
+Lombok Annotations Support
+REST Client
+Docker
+________________________________________________________
 
-git remote add origin https://github.com/snopitech/Bank.git
-git branch -M main
-git push -u origin main
+Also install the following to help with the frontend building
+ES7+ React/Redux/React-Native Snippets
+Prettier – Code Formatter
+ESLint
+JavaScript and TypeScript Nightly (optional)
+Tailwind CSS IntelliSense (only if using Tailwind)
+Auto Import
+GitLens
+VS Code Icons
 
+Note to see all extensions in your vscode Ctr + Shift + p  and paste Extensions: Show Installed Extensions and to close all tabs paste Close All
 
-After working on code please push to Git by
-git add .  (to add all new changes to  the list of push)
-git commit -m " message " (to prepare all new changes for push)
-git push  (to push your code to GitHub)
-___________________________________________________
-How to clone
-go to git bash, cd to the folder where you want to clone
-you code to,
-Then type git clone "your repo url"
+Now install Apache Maven from google,apache-maven-3.9.12, add it to environment variable
+Then create a spring-boot project from vscode inside the backend folder
+Open VS Code
+Press Ctrl + Shift + P to open the Command Palette
+Type Spring Initializr
+Select Spring Initializr: Create a Maven Project
+Choose:
+Java
+Spring Boot version (e.g., 3.x)
+Group Id (e.g., com.snopitech)
+Artifact Id (e.g., bankapp)
+Select dependencies (common ones):
+pring Web
+Spring Data JPA
+Spring Boot DevTools
+H2 Database or MySQL Driver
+Choose a folder to save the project
+VS Code will automatically open the new project
 
+If you are using vscode terminal as in power shell, run maven with .\mvnw spring-boot:run but if you are using vscode terminal as in command prompt, 
+run maven with ./mvnw spring-boot:run
 
-_______________________________________________________
-When you have java, node.js and react already installed,
-just clone your code work on it,
-start up react at
-npm install vite --save-dev
-Get-Content package.json
-dir node_modules\.bin\vite*
-node_modules\.bin\vite
-_____________________________
+Running the backend, spring boot
+cd C:\Users\snoop\Desktop\SnopitechBank\backend
+Press Ctrl + C to stop the server
+.\mvnw spring-boot:run  (works for powershell)
+AND
 
-The ports for my frontend
-http://localhost:5173/  for the Admin-panel
-http://localhost:5174/  For the hr-dashboard
-http://localhost:5175/  For the customer-frontend
-_____________________________________
+If error occurs, it could be that the server is already running and you need to stop it first
+netstat -ano | findstr :8080  (to stop springboot run)
+copy the code and replace it for
+taskkill /PID  25188 /F
+then run again ( .\mvnw spring-boot:run )
+___________________________________
 
-
-terminal important commands
-cd ..  (to go one step backward) cls (to clear content) cd folder-name (to go the folder)
-Ctrl + Shift + P (type Close All Editors to close tabs in vscode)
-____________________________________
 
 To create A frontend with react + vite
 
@@ -79,18 +146,62 @@ Press Ctrl + C to stop the server
 npm run dev  (to start server and paste the url on a browser)
 ________________________________________
 
-Running the backend, spring boot
-cd C:\Users\snoop\Desktop\SnopitechBank\backend
-Press Ctrl + C to stop the server
-./mvnw spring-boot:run  (works for me)
+When you project is already cloned and you want to install vite in a new machine to run your project
+
+first install node.js if is not there
+use node -v check
+add C:\Program Files\nodejs\  to the path in environmental variable.
+restart your vscode and run this command again
+node -v
+npm -v
+
+then navigate to the exact react folder where you want your react project
+e.g C:\Users\micha\desktop\BankApp\Bank\frontend\customer-frontend>
+type npm install (to install react)
+npm audit fix  (to fix vulnerability) until you find 0 vulnerability
+npm install @heroicons/react
+npm run dev  (you do not have to do npm create vite@latest .)that is for a new project set up
+
+______________________________________________________________________
+After coding then you push your code into your GitHub repository(note you must create a repo in GitHub before you can push)
+
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/snopitech/Bank.git
+git push -u origin main
+
+git remote add origin https://github.com/snopitech/Bank.git
+git branch -M main
+git push -u origin main
 
 
-If error occurs, it could be that the server is already running and you nee to stop it first
-netstat -ano | findstr :8080  (to stop springboot run)
-copy the code and replace it for
-taskkill /PID  25188 /F
-then run again ( ./mvnw spring-boot:run )
-___________________________________
+After working on code please push to Git by
+git add .  (to add all new changes to  the list of push)
+git commit -m " message " (to prepare all new changes for push)
+git push  (to push your code to GitHub)
+___________________________________________________
+How to clone
+go to git bash, cd to the folder where you want to clone
+you code to,
+Then type git clone "your repo url"
+
+
+_______________________________________________________
+
+The ports for my frontend
+http://localhost:5173/  for the Admin-panel
+http://localhost:5174/  For the hr-dashboard
+http://localhost:5175/  For the customer-frontend
+_____________________________________
+
+
+terminal important commands
+cd ..  (to go one step backward) cls (to clear content) cd folder-name (to go the folder)
+Ctrl + Shift + P (type Close All Editors to close tabs in vscode)
+____________________________________
+
 
 MySQL Queries
 
@@ -133,35 +244,50 @@ ____________________________________
 SELECT id, card_number, account_id, status FROM cards; (to see debitcard in the database)
 ____________________________________
 
-For my AI features, I added Ollama for advance queries
+Database_Backup_Guide.txt
+_____________________________________
+Old machine database backup
+Note, after coding, you would have had some datas in your database pushed by hibernate, but some reason it is a good practice
+to export your database to  any new machine with usb.
+you will have to backup your database so that you can transfer it to the new machine
+open your old machine vscode terminal 
+ Type:  mysqldump -u root -p snopitechbank > snopitechbank_backup.sql  (to export all data from database)(snopitechbank is the name of my database during building my site)
+note makesure you update sql database by repeating " mysqldump -u root -p snopitechbank > snopitechbank_backup.sql "
+export with usb. plug in your usb and type:
+wmic logicaldisk where drivetype=2 get deviceid, volumename, size  (in the vscode to know what letter is assigned to my usb)
+type:  copy snopitechbank_backup.sql D:\ (because D is the letter assigned)
+Then eject the usb from the old machine and plug it in the new machine.
+____________________________________________________________________________________
+New machine database import
+first type:     mysql --version (to know if msql server is downloaded)
+ type copy D:\snopitechbank_backup.sql .  (to copy the file from the usb to the computer)
+ then login with; mysql -u root -p (to login in your database)
+ DROP DATABASE IF EXISTS snopitechbank;
+ CREATE DATABASE snopitechbank;
+ USE snopitechbank;
+ then type EXIT; (to get off your database)
+Now import your backups with: 
+mysql -u root -p snopitechbank < snopitechbank_backup_new.sql
 
-i went to gitbash to download windget install Ollama.Ollama
-The go to cmd as admin and check
-the version. ollama --version
-             ollama pull gemma:2b
-             ollama run gemma:2b "Hello! What is 2+2?"
-             curl http://localhost:11434/api/version
-go to termininal in vscode, type ls
-                                 Test-Path AI  (if false)
-                                 New-Item -ItemType Directory -Name AI  (it will be true now if you type Test-Path AI again)
-                                 check ls again you will see AI in the folder
-then run the command one by one cd AI
-                                 pwd
-                                 ls
-                                 New-Item -ItemType File -Name AIMainAnalyzer.js 
-                                  # 5. Verify file exists  ls
-                                  # 6. Go back to main folder cd ..
-                                  # 7. Final check  ls
-so everytime before you start you web, start the springboot for the backend services ( ./mvnw spring-boot:run ) and
-for the frontend start  by typing:  curl http://localhost:11434/api/version
-                            select :  Y
-                            and    : npm run dev
-What you gain:
+________________________________________
 
-    Simple questions → Still fast from your system
-    Complex questions → Now get AI-powered insights
-    Fallback → If Ollama fails, your system still works
-    Privacy → Ollama runs locally on your machine
+AI Supplement feature
+________________________________________
+
+For my AI andvance features, I had to install Ollama to boost the advance queries from user
+
+I used power shell type
+winget install --id Ollama.Ollama -e  (ones installed, close the powershell and restart it)
+
+check in Ollama is installed by typing :
+ollama --version
+
+tasklist | findstr ollama (to kill ollama because there is chances that it might have been running in your machine)
+ollama pull llama3 (to pull pllame until you get success message)
+then type
+ollama run llama3
+It will ask you to type your message, just type hello and it will respond to you to prove that ollama is installed in your machine
+
 __________________________________________________________________________
 
 To Run your backend queries from Thunder client or Postman in your vscode
@@ -655,6 +781,46 @@ GET /api/admin/checks/{checkId}
 POST /api/admin/checks/{checkId}/approve
 POST /api/admin/checks/{checkId}/reject
 ____________________________________________________________________________________________
+
+APIs for tellers operation
+
+GET /api/teller/search/users?query={searchTerm}
+GET /api/teller/user/{userId}/accounts
+POST /api/teller/deposit
+POST /api/teller/withdraw
+POST /api/teller/transfer
+____________________________________________________________________________________________
+___________________________________________________________________________________
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
