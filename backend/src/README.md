@@ -163,8 +163,9 @@ npm install @heroicons/react
 npm run dev  (you do not have to do npm create vite@latest .)that is for a new project set up
 
 ______________________________________________________________________
-After coding then you push your code into your GitHub repository(note you must create a repo in GitHub before you can push)
 
+After coding then you push your code into your GitHub repository;
+(note you must create a repo in GitHub before you can push)
 git init
 git add README.md
 git commit -m "first commit"
@@ -172,15 +173,20 @@ git branch -M main
 git remote add origin https://github.com/snopitech/Bank.git
 git push -u origin main
 
-git remote add origin https://github.com/snopitech/Bank.git
-git branch -M main
-git push -u origin main
 
+After working on code please push to Git by;
 
-After working on code please push to Git by
-git add .  (to add all new changes to  the list of push)
-git commit -m " message " (to prepare all new changes for push)
-git push  (to push your code to GitHub)
+first type: git status (in vscoed terminal to known how many changes have been made)
+git add .  (to stage all backend + frontend)
+git commit -m "Update backend and frontend" (to commit them)
+git push origin master  (to push your code to GitHub)
+
+If your are trying to push a particular file, 
+Navigate to the folder and file like;
+git add backend/src/READE.md  (to stage the README.md file only)
+git commit -m "Updated backend README" (to commit README.md file only)
+git push origin master (To push the file to GitHub repo)
+
 ___________________________________________________
 How to clone
 go to git bash, cd to the folder where you want to clone
@@ -239,9 +245,21 @@ SELECT COUNT(*) FROM users;
 SELECT COUNT(*) FROM accounts;
 SELECT COUNT(*) FROM alerts;
 
-____________________________________
 
 SELECT id, card_number, account_id, status FROM cards; (to see debitcard in the database)
+_______________________________________________
+
+Note You must know how to make your usb drive bootable. 
+open command prompt as an administrator
+Type the following commands one at a time
+
+diskpart
+list disk
+select disk X   (your USB)
+clean
+create partition primary
+Then following the instructions when a window pops out. note you must format to complete the process.
+
 ____________________________________
 
 Database_Backup_Guide.txt
@@ -790,6 +808,10 @@ POST /api/teller/deposit
 POST /api/teller/withdraw
 POST /api/teller/transfer
 ____________________________________________________________________________________________
+
+SELECT id, user_id, approved_amount, outstanding_balance, interest_rate FROM loan_accounts; (to get the loan id)
+
+UPDATE loan_accounts SET interest_rate = 2.5 WHERE id = [the-id-you-found]; (to update the loan interest rate)
 ___________________________________________________________________________________
 
 
