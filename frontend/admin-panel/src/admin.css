@@ -1,0 +1,30 @@
+/* admin.css - plain CSS only */
+.red-header {
+  background-color: #dc2626;
+  color: white;
+  padding: 20px 24px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.red-button {
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  margin-right: 8px;
+  cursor: pointer;
+}

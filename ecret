@@ -1,0 +1,379 @@
+[35mbackend/local_backup.sql[m[36m:[m  `approval_[1;31mtoken[m` varchar(255) DEFAULT NULL,
+[35mbackend/local_backup.sql[m[36m:[m  `approval_[1;31mtoken[m_expiry` datetime(6) DEFAULT NULL,
+[35mbackend/local_backup.sql[m[36m:[m  `reset_[1;31mtoken[m` varchar(255) DEFAULT NULL,
+[35mbackend/local_backup.sql[m[36m:[m  `reset_[1;31mtoken[m_expiry` datetime(6) DEFAULT NULL,
+[35mbackend/local_backup.sql[m[36m:[m  `[1;31mtoken[mized_card_number` varchar(255) NOT NULL,
+[35mbackend/local_backup.sql[m[36m:[m  `push_[1;31mtoken[m` varchar(255) DEFAULT NULL,
+[35mbackend/mvnw.cmd[m[36m:[m@FOR /F "usebackq [1;31mtoken[ms=1* delims==" %%A IN (`powershell -noprofile "& {$scriptDir='%~dp0'; $script='%__MVNW_ARG0_NAME__%'; icm -ScriptBlock ([Scriptblock]::Create((Get-Content -Raw '%~f0'))) -NoNewScope}"`) DO @(
+[35mbackend/src/README.md[m[36m:[mGET       http://localhost:8080/auth/verify-reset-[1;31mtoken[m/YOUR-[1;31mTOKEN[m-HERE( to test [1;31mtoken[m verification)
+[35mbackend/src/README.md[m[36m:[mPOST      http://localhost:8080/auth/reset-password (Now to change the password use the same [1;31mtoken[m)
+[35mbackend/src/README.md[m[36m:[mPOST      http://localhost:8080/auth/change-email/request (to request email change [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            // Generate email change [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            String [1;31mtoken[m = UUID.randomUUID().toString();
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            // Save [1;31mtoken[m to user (we're reusing reset[1;31mToken[m field for email change)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            user.setReset[1;31mToken[m([1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            user.setReset[1;31mToken[mExpiry(expiryDate);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            String verificationLink = frontendUrl + "/verify-email-change?[1;31mtoken[m=" + [1;31mtoken[m + "&newEmail=" + request.getNewEmail();
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            System.out.println("✅ Email change [1;31mtoken[m generated for: " + user.getEmail());
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            System.out.println("   [1;31mToken[m: " + [1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m    @GetMapping("/verify-email-change/{[1;31mtoken[m}")
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m    public ResponseEntity<?> verifyEmailChange[1;31mToken[m(@PathVariable String [1;31mtoken[m, @RequestParam String newEmail) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            System.out.println("🔍 Verifying email change [1;31mtoken[m: " + [1;31mtoken[m + " for new email: " + newEmail);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            User user = userRepository.findByReset[1;31mToken[m([1;31mtoken[m).orElse(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m                System.out.println("❌ Email change [1;31mtoken[m not found");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m                return ResponseEntity.status(404).body("Invalid or expired [1;31mtoken[m.");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            if (user.getReset[1;31mToken[mExpiry() == null || user.getReset[1;31mToken[mExpiry().isBefore(LocalDateTime.now())) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m                System.out.println("❌ Email change [1;31mtoken[m expired");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m                return ResponseEntity.status(400).body("[1;31mToken[m has expired.");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            System.out.println("✅ Email change [1;31mtoken[m is valid for user: " + user.getEmail());
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            return ResponseEntity.ok().body("[1;31mToken[m is valid. You can now confirm email change.");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            System.err.println("💥 Email change [1;31mtoken[m verification error: " + e.getMessage());
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m                .body("[1;31mToken[m verification failed.");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            System.out.println("✅ Confirming email change with [1;31mtoken[m: " + request.get[1;31mToken[m() + " to: " + request.getNewEmail());
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            // Verify [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            User user = userRepository.findByReset[1;31mToken[m(request.get[1;31mToken[m()).orElse(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m                return ResponseEntity.status(404).body("Invalid or expired [1;31mtoken[m.");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            if (user.getReset[1;31mToken[mExpiry() == null || user.getReset[1;31mToken[mExpiry().isBefore(LocalDateTime.now())) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m                return ResponseEntity.status(400).body("[1;31mToken[m has expired.");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            // Clear [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            user.setReset[1;31mToken[m(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/AuthController.java[m[36m:[m            user.setReset[1;31mToken[mExpiry(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/CardController.java[m[36m:[m            // Generate a temporary [1;31mtoken[m (in production, use JWT with 30s expiry)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/CardController.java[m[36m:[m            String temp[1;31mToken[m = generateTemp[1;31mToken[m();
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/CardController.java[m[36m:[m            // cacheService.put(temp[1;31mToken[m, card.getCardNumber(), 30);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/CardController.java[m[36m:[m            response.put("[1;31mtoken[m", temp[1;31mToken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/CardController.java[m[36m:[m            response.put("message", "[1;31mToken[m valid for 30 seconds. Card details will auto-hide.");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/CardController.java[m[36m:[m     * POST /api/cards/reveal-with-[1;31mtoken[m - Get full card number with [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/CardController.java[m[36m:[m    @PostMapping("/reveal-with-[1;31mtoken[m")
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/CardController.java[m[36m:[m    public ResponseEntity<?> getFullNumberWith[1;31mToken[m(@RequestParam String [1;31mtoken[m) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/CardController.java[m[36m:[m            // String cardNumber = cacheService.get([1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/CardController.java[m[36m:[m            // In production, validate [1;31mtoken[m and get from cache
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/CardController.java[m[36m:[m                .body(Map.of("error", "Invalid or expired [1;31mtoken[m"));
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/CardController.java[m[36m:[m    private String generateTemp[1;31mToken[m() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/CreditCardController.java[m[36m:[m            // Create a temporary [1;31mtoken[m or just return the full number
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmailChangeController.java[m[36m:[m    @GetMapping("/verify/{[1;31mtoken[m}")
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmailChangeController.java[m[36m:[m    public ResponseEntity<?> verifyEmailChange[1;31mToken[m(@PathVariable String [1;31mtoken[m) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmailChangeController.java[m[36m:[m           boolean isValid = emailChangeService.verifyEmailChange[1;31mToken[m([1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmailChangeController.java[m[36m:[m           return ResponseEntity.ok().body("[1;31mToken[m is valid");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmailChangeController.java[m[36m:[m           return ResponseEntity.badRequest().body("Invalid [1;31mtoken[m");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmailChangeController.java[m[36m:[m            return ResponseEntity.internalServerError().body("Error verifying [1;31mtoken[m");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmailChangeController.java[m[36m:[m            String [1;31mtoken[m = request.get("[1;31mtoken[m");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmailChangeController.java[m[36m:[m            if ([1;31mtoken[m == null || newEmail == null) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmailChangeController.java[m[36m:[m                return ResponseEntity.badRequest().body("Both [1;31mtoken[m and newEmail are required");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmailChangeController.java[m[36m:[m            emailChangeService.confirmEmailChange([1;31mtoken[m, newEmail);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmployeesController.java[m[36m:[m     * Approve employee by [1;31mtoken[m (from email link)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmployeesController.java[m[36m:[m    public ResponseEntity<?> approveBy[1;31mToken[m(@RequestParam String [1;31mtoken[m, @RequestBody ApproveEmployeeRequest request) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmployeesController.java[m[36m:[m            EmployeeDTO employee = employeeService.approveEmployeeBy[1;31mToken[m([1;31mtoken[m, request);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmployeesController.java[m[36m:[m     * Reject employee by [1;31mtoken[m (from email link)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmployeesController.java[m[36m:[m    public ResponseEntity<?> rejectBy[1;31mToken[m(@RequestParam String [1;31mtoken[m, @RequestBody RejectEmployeeRequest request) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmployeesController.java[m[36m:[m            // Note: You might need to add a rejectBy[1;31mToken[m method to EmployeeService
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/EmployeesController.java[m[36m:[m            return ResponseEntity.badRequest().body(Map.of("error", "Reject by [1;31mtoken[m not implemented yet"));
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            // Create temporary [1;31mtoken[m for this login session
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            String temp[1;31mToken[m = UUID.randomUUID().toString();
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            pendingLogins.put(temp[1;31mToken[m, employee.getId());
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            response.put("temp[1;31mToken[m", temp[1;31mToken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            String temp[1;31mToken[m = request.get("temp[1;31mToken[m");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            if (temp[1;31mToken[m == null || code == null) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m                    "error", "Temp [1;31mtoken[m and verification code are required"
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            // Get employee ID from temp [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            Long employeeId = pendingLogins.get(temp[1;31mToken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            // Remove temp [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            pendingLogins.remove(temp[1;31mToken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            // Generate session [1;31mtoken[m (in production, use JWT or proper session management)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            String session[1;31mToken[m = UUID.randomUUID().toString();
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            response.put("[1;31mtoken[m", session[1;31mToken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            String temp[1;31mToken[m = request.get("temp[1;31mToken[m");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            if (temp[1;31mToken[m == null) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m                    "error", "Temp [1;31mtoken[m is required"
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            // Get employee ID from temp [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/HRLoginController.java[m[36m:[m            Long employeeId = pendingLogins.get(temp[1;31mToken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/PasswordResetController.java[m[36m:[mimport com.snopitech.snopitechbank.dto.Verify[1;31mToken[mResponseDTO;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/PasswordResetController.java[m[36m:[m     * GET /auth/verify-reset-[1;31mtoken[m/{[1;31mtoken[m}
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/PasswordResetController.java[m[36m:[m     * Verify if a reset [1;31mtoken[m is valid
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/PasswordResetController.java[m[36m:[m    @GetMapping("/verify-reset-[1;31mtoken[m/{[1;31mtoken[m}")
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/PasswordResetController.java[m[36m:[m    public ResponseEntity<Verify[1;31mToken[mResponseDTO> verifyReset[1;31mToken[m(@PathVariable String [1;31mtoken[m) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/PasswordResetController.java[m[36m:[m            passwordResetService.verifyReset[1;31mToken[m([1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/PasswordResetController.java[m[36m:[m            return ResponseEntity.ok(new Verify[1;31mToken[mResponseDTO(true, "[1;31mToken[m is valid", null));
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/PasswordResetController.java[m[36m:[m            return ResponseEntity.ok(new Verify[1;31mToken[mResponseDTO(false, e.getMessage(), null));
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/PasswordResetController.java[m[36m:[m            return ResponseEntity.ok(new Verify[1;31mToken[mResponseDTO(false, "Invalid or expired [1;31mtoken[m", null));
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/PasswordResetController.java[m[36m:[m     * Reset password using a valid [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/controller/PasswordResetController.java[m[36m:[m            passwordResetService.resetPassword(request.get[1;31mToken[m(), request.getNewPassword());
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/AddCardToWalletRequest.java[m[36m:[m    private String walletProvider[1;31mToken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/AddCardToWalletRequest.java[m[36m:[m    public String getWalletProvider[1;31mToken[m() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/AddCardToWalletRequest.java[m[36m:[m        return walletProvider[1;31mToken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/AddCardToWalletRequest.java[m[36m:[m    public void setWalletProvider[1;31mToken[m(String walletProvider[1;31mToken[m) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/AddCardToWalletRequest.java[m[36m:[m        this.walletProvider[1;31mToken[m = walletProvider[1;31mToken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/ConfirmEmailChangeDTO.java[m[36m:[m    private String [1;31mtoken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/ConfirmEmailChangeDTO.java[m[36m:[m    public String get[1;31mToken[m() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/ConfirmEmailChangeDTO.java[m[36m:[m        return [1;31mtoken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/ConfirmEmailChangeDTO.java[m[36m:[m    public void set[1;31mToken[m(String [1;31mtoken[m) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/ConfirmEmailChangeDTO.java[m[36m:[m        this.[1;31mtoken[m = [1;31mtoken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/ResetPasswordDTO.java[m[36m:[m    private String [1;31mtoken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/ResetPasswordDTO.java[m[36m:[m    public ResetPasswordDTO(String [1;31mtoken[m, String newPassword, String confirmPassword) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/ResetPasswordDTO.java[m[36m:[m        this.[1;31mtoken[m = [1;31mtoken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/ResetPasswordDTO.java[m[36m:[m    public String get[1;31mToken[m() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/ResetPasswordDTO.java[m[36m:[m        return [1;31mtoken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/ResetPasswordDTO.java[m[36m:[m    public void set[1;31mToken[m(String [1;31mtoken[m) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/ResetPasswordDTO.java[m[36m:[m        this.[1;31mtoken[m = [1;31mtoken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/VerifyTokenResponseDTO.java[m[36m:[mpublic class Verify[1;31mToken[mResponseDTO {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/VerifyTokenResponseDTO.java[m[36m:[m    public Verify[1;31mToken[mResponseDTO() {}
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/VerifyTokenResponseDTO.java[m[36m:[m    public Verify[1;31mToken[mResponseDTO(boolean valid, String message, String email) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/WalletCardDTO.java[m[36m:[m    private String [1;31mtoken[mizedCardNumber;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/WalletCardDTO.java[m[36m:[m                         String cardType, String cardHolderName, String [1;31mtoken[mizedCardNumber,
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/WalletCardDTO.java[m[36m:[m        this.[1;31mtoken[mizedCardNumber = [1;31mtoken[mizedCardNumber;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/WalletCardDTO.java[m[36m:[m    public String get[1;31mToken[mizedCardNumber() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/WalletCardDTO.java[m[36m:[m        return [1;31mtoken[mizedCardNumber;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/WalletCardDTO.java[m[36m:[m    public void set[1;31mToken[mizedCardNumber(String [1;31mtoken[mizedCardNumber) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/dto/WalletCardDTO.java[m[36m:[m        this.[1;31mtoken[mizedCardNumber = [1;31mtoken[mizedCardNumber;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/CreditIncreaseRequest.java[m[36m:[m@JsonIgnoreProperties({"password", "ssnEncrypted", "securityQuestions", "accounts", "sessionId", "reset[1;31mToken[m", "reset[1;31mToken[mExpiry"})
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Employee.java[m[36m:[m    // Approval [1;31mtoken[m (for email approval link)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Employee.java[m[36m:[m    private String approval[1;31mToken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Employee.java[m[36m:[m    private LocalDateTime approval[1;31mToken[mExpiry;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Employee.java[m[36m:[m    public String getApproval[1;31mToken[m() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Employee.java[m[36m:[m        return approval[1;31mToken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Employee.java[m[36m:[m    public void setApproval[1;31mToken[m(String approval[1;31mToken[m) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Employee.java[m[36m:[m        this.approval[1;31mToken[m = approval[1;31mToken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Employee.java[m[36m:[m    public LocalDateTime getApproval[1;31mToken[mExpiry() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Employee.java[m[36m:[m        return approval[1;31mToken[mExpiry;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Employee.java[m[36m:[m    public void setApproval[1;31mToken[mExpiry(LocalDateTime approval[1;31mToken[mExpiry) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Employee.java[m[36m:[m        this.approval[1;31mToken[mExpiry = approval[1;31mToken[mExpiry;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/User.java[m[36m:[m    @Column(name = "reset_[1;31mtoken[m")
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/User.java[m[36m:[m    private String reset[1;31mToken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/User.java[m[36m:[m    @Column(name = "reset_[1;31mtoken[m_expiry")
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/User.java[m[36m:[m    private LocalDateTime reset[1;31mToken[mExpiry;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/User.java[m[36m:[m    public String getReset[1;31mToken[m() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/User.java[m[36m:[m        return reset[1;31mToken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/User.java[m[36m:[m    public void setReset[1;31mToken[m(String reset[1;31mToken[m) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/User.java[m[36m:[m        this.reset[1;31mToken[m = reset[1;31mToken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/User.java[m[36m:[m    public LocalDateTime getReset[1;31mToken[mExpiry() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/User.java[m[36m:[m        return reset[1;31mToken[mExpiry;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/User.java[m[36m:[m    public void setReset[1;31mToken[mExpiry(LocalDateTime reset[1;31mToken[mExpiry) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/User.java[m[36m:[m        this.reset[1;31mToken[mExpiry = reset[1;31mToken[mExpiry;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Wallet.java[m[36m:[m    private String deviceId; // Unique device identifier ([1;31mtoken[mized)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Wallet.java[m[36m:[m    private String push[1;31mToken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Wallet.java[m[36m:[m    public String getPush[1;31mToken[m() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Wallet.java[m[36m:[m        return push[1;31mToken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Wallet.java[m[36m:[m    public void setPush[1;31mToken[m(String push[1;31mToken[m) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/Wallet.java[m[36m:[m        this.push[1;31mToken[m = push[1;31mToken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/WalletCard.java[m[36m:[m    private String [1;31mtoken[mizedCardNumber; // Device-specific [1;31mtoken[m (not real card number)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/WalletCard.java[m[36m:[m    public WalletCard(Wallet wallet, Card card, String [1;31mtoken[mizedCardNumber) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/WalletCard.java[m[36m:[m        this.[1;31mtoken[mizedCardNumber = [1;31mtoken[mizedCardNumber;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/WalletCard.java[m[36m:[m    public String get[1;31mToken[mizedCardNumber() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/WalletCard.java[m[36m:[m        return [1;31mtoken[mizedCardNumber;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/WalletCard.java[m[36m:[m    public void set[1;31mToken[mizedCardNumber(String [1;31mtoken[mizedCardNumber) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/model/WalletCard.java[m[36m:[m        this.[1;31mtoken[mizedCardNumber = [1;31mtoken[mizedCardNumber;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/repository/EmployeeRepository.java[m[36m:[m    // Find by approval [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/repository/EmployeeRepository.java[m[36m:[m    Optional<Employee> findByApproval[1;31mToken[m(String [1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/repository/UserRepository.java[m[36m:[m    // Find user by reset [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/repository/UserRepository.java[m[36m:[m    Optional<User> findByReset[1;31mToken[m(String reset[1;31mToken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/repository/WalletCardRepository.java[m[36m:[m    // Find wallet card by [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/repository/WalletCardRepository.java[m[36m:[m    Optional<WalletCard> findBy[1;31mToken[mizedCardNumber(String [1;31mtoken[mizedCardNumber);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeService.java[m[36m:[m     * Generates a verification [1;31mtoken[m and sends email to current email
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeService.java[m[36m:[m     * Verify if an email change [1;31mtoken[m is valid (not expired)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeService.java[m[36m:[m    boolean verifyEmailChange[1;31mToken[m(String [1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeService.java[m[36m:[m     * Confirm and update email using a valid [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeService.java[m[36m:[m    void confirmEmailChange(String [1;31mtoken[m, String newEmail);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m    // Store pending email changes ([1;31mtoken[m -> newEmail)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m    // [1;31mToken[m expiry time in hours
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m    private static final int [1;31mTOKEN[m_EXPIRY_HOURS = 1;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        // Generate secure [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        String [1;31mtoken[m = generateSecure[1;31mToken[m();
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        // Store pending email change ([1;31mtoken[m -> newEmail)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        pendingEmailChanges.put([1;31mtoken[m, newEmail);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        // Store [1;31mtoken[m in user entity (similar to reset[1;31mToken[m)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        user.setReset[1;31mToken[m([1;31mtoken[m); // Reusing reset[1;31mToken[m field for email change
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        user.setReset[1;31mToken[mExpiry(LocalDateTime.now().plusHours([1;31mTOKEN[m_EXPIRY_HOURS));
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        // Save user with [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m       String verificationLink = "http://localhost:5175/verify-email-change?[1;31mtoken[m=" + [1;31mtoken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m    public boolean verifyEmailChange[1;31mToken[m(String [1;31mtoken[m) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        // Check if [1;31mtoken[m exists in pending changes
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        if (!pendingEmailChanges.containsKey([1;31mtoken[m)) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m            throw new IllegalArgumentException("Invalid or expired email change [1;31mtoken[m");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        // Find user by [1;31mtoken[m (using reset[1;31mToken[m field)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        User user = userRepository.findByReset[1;31mToken[m([1;31mtoken[m)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired email change [1;31mtoken[m"));
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        // Check if [1;31mtoken[m is expired
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        if (user.getReset[1;31mToken[mExpiry() == null || user.getReset[1;31mToken[mExpiry().isBefore(LocalDateTime.now())) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m            // Clear expired [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m            user.setReset[1;31mToken[m(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m            user.setReset[1;31mToken[mExpiry(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m            pendingEmailChanges.remove([1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m            throw new IllegalArgumentException("Email change [1;31mtoken[m has expired");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m    public void confirmEmailChange(String [1;31mtoken[m, String newEmail) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        // Verify [1;31mtoken[m first
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        verifyEmailChange[1;31mToken[m([1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        String storedNewEmail = pendingEmailChanges.get([1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        // Find user by [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        User user = userRepository.findByReset[1;31mToken[m([1;31mtoken[m)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m                .orElseThrow(() -> new IllegalArgumentException("Invalid email change [1;31mtoken[m"));
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        // Clear reset [1;31mtoken[m (one-time use)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        user.setReset[1;31mToken[m(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        user.setReset[1;31mToken[mExpiry(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m        pendingEmailChanges.remove([1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m     * Generate a secure random [1;31mtoken[m (64 characters)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmailChangeServiceImpl.java[m[36m:[m    private String generateSecure[1;31mToken[m() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        // Generate approval [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        String approval[1;31mToken[m = generateApproval[1;31mToken[m();
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        employee.setApproval[1;31mToken[m(approval[1;31mToken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        employee.setApproval[1;31mToken[mExpiry(LocalDateTime.now().plusDays(7)); // [1;31mToken[m valid for 7 days
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m     * Approve employee by [1;31mtoken[m (from email link)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m    public EmployeeDTO approveEmployeeBy[1;31mToken[m(String [1;31mtoken[m, ApproveEmployeeRequest request) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        Employee employee = employeeRepository.findByApproval[1;31mToken[m([1;31mtoken[m)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m                .orElseThrow(() -> new RuntimeException("Invalid approval [1;31mtoken[m"));
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        if (employee.getApproval[1;31mToken[mExpiry().isBefore(LocalDateTime.now())) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m            throw new RuntimeException("Approval [1;31mtoken[m has expired");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        employee.setApproval[1;31mToken[m(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        employee.setApproval[1;31mToken[mExpiry(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        employee.setApproval[1;31mToken[m(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        employee.setApproval[1;31mToken[mExpiry(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        String temp[1;31mToken[m = UUID.randomUUID().toString();
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        response.put("temp[1;31mToken[m", temp[1;31mToken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m     * Generate approval [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m    private String generateApproval[1;31mToken[m() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        String approvalLink = "http://localhost:5174/employee-approval?[1;31mtoken[m=" + employee.getApproval[1;31mToken[m();
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/EmployeeService.java[m[36m:[m        String rejectLink = "http://localhost:5174/employee-approval?[1;31mtoken[m=" + employee.getApproval[1;31mToken[m();
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetService.java[m[36m:[m     * Generates a reset [1;31mtoken[m and sends email
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetService.java[m[36m:[m     * Verify if a reset [1;31mtoken[m is valid (not expired, not used)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetService.java[m[36m:[m    boolean verifyReset[1;31mToken[m(String [1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetService.java[m[36m:[m     * Reset password using a valid [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetService.java[m[36m:[m    void resetPassword(String [1;31mtoken[m, String newPassword);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m    // [1;31mToken[m expiry time in hours
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m    private static final int [1;31mTOKEN[m_EXPIRY_HOURS = 1;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        // Generate secure [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        String [1;31mtoken[m = generateSecure[1;31mToken[m();
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        // Set [1;31mtoken[m and expiry (1 hour from now)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        user.setReset[1;31mToken[m([1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        user.setReset[1;31mToken[mExpiry(LocalDateTime.now().plusHours([1;31mTOKEN[m_EXPIRY_HOURS));
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        // Save user with [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        String resetLink = "http://localhost:5175/reset-password?[1;31mtoken[m=" + [1;31mtoken[m;
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m    public boolean verifyReset[1;31mToken[m(String [1;31mtoken[m) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        // Find user by reset [1;31mtoken[m (using the new method we added to UserRepository)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        User user = userRepository.findByReset[1;31mToken[m([1;31mtoken[m)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset [1;31mtoken[m"));
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        // Check if [1;31mtoken[m is expired
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        if (user.getReset[1;31mToken[mExpiry() == null || user.getReset[1;31mToken[mExpiry().isBefore(LocalDateTime.now())) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m            // Clear expired [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m            user.setReset[1;31mToken[m(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m            user.setReset[1;31mToken[mExpiry(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m            throw new IllegalArgumentException("Reset [1;31mtoken[m has expired");
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m    public void resetPassword(String [1;31mtoken[m, String newPassword) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        // Verify [1;31mtoken[m first
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        verifyReset[1;31mToken[m([1;31mtoken[m);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        // Find user by [1;31mtoken[m
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        User user = userRepository.findByReset[1;31mToken[m([1;31mtoken[m)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m                .orElseThrow(() -> new IllegalArgumentException("Invalid reset [1;31mtoken[m"));
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        // Clear reset [1;31mtoken[m (one-time use)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        user.setReset[1;31mToken[m(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m        user.setReset[1;31mToken[mExpiry(null);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m     * Generate a secure random [1;31mtoken[m (64 characters)
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/PasswordResetServiceImpl.java[m[36m:[m    private String generateSecure[1;31mToken[m() {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/WalletService.java[m[36m:[m        String [1;31mtoken[mizedCardNumber = generate[1;31mToken[mizedCardNumber(card);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/WalletService.java[m[36m:[m        WalletCard walletCard = new WalletCard(wallet, card, [1;31mtoken[mizedCardNumber);
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/WalletService.java[m[36m:[m    private String generate[1;31mToken[mizedCardNumber(Card card) {
+[35mbackend/src/main/java/com/snopitech/snopitechbank/service/WalletService.java[m[36m:[m            walletCard.get[1;31mToken[mizedCardNumber(),
+[35mfrontend/HR-Dashboard/package-lock.json[m[36m:[m        "js-[1;31mtoken[ms": "^4.0.0",
+[35mfrontend/HR-Dashboard/package-lock.json[m[36m:[m    "node_modules/js-[1;31mtoken[ms": {
+[35mfrontend/HR-Dashboard/package-lock.json[m[36m:[m      "resolved": "https://registry.npmjs.org/js-[1;31mtoken[ms/-/js-[1;31mtoken[ms-4.0.0.tgz",
+[35mfrontend/HR-Dashboard/src/HREmployeeApproval.jsx[m[36m:[m  const [1;31mtoken[m = searchParams.get('[1;31mtoken[m');
+[35mfrontend/HR-Dashboard/src/HREmployeeApproval.jsx[m[36m:[m    if (![1;31mtoken[m) {
+[35mfrontend/HR-Dashboard/src/HREmployeeApproval.jsx[m[36m:[m      setError('No approval [1;31mtoken[m provided');
+[35mfrontend/HR-Dashboard/src/HREmployeeApproval.jsx[m[36m:[m    // We don't need to fetch employee data first - we'll use the [1;31mtoken[m when approving
+[35mfrontend/HR-Dashboard/src/HREmployeeApproval.jsx[m[36m:[m  }, [[1;31mtoken[m]);
+[35mfrontend/HR-Dashboard/src/HREmployeeApproval.jsx[m[36m:[m      const response = await fetch(`${API_BASE}/api/employees/approve?[1;31mtoken[m=${[1;31mtoken[m}`, {
+[35mfrontend/HR-Dashboard/src/HREmployeeApproval.jsx[m[36m:[m      const response = await fetch(`${API_BASE}/api/employees/reject?[1;31mtoken[m=${[1;31mtoken[m}`, {
+[35mfrontend/HR-Dashboard/src/HREmployeeApproval.jsx[m[36m:[m            You are about to approve or reject an employee application using the [1;31mtoken[m from your email.
+[35mfrontend/HR-Dashboard/src/HREmployeeApproval.jsx[m[36m:[m          <div style={styles.[1;31mtoken[mBox}>
+[35mfrontend/HR-Dashboard/src/HREmployeeApproval.jsx[m[36m:[m            <strong>[1;31mToken[m:</strong> <code>{[1;31mtoken[m}</code>
+[35mfrontend/HR-Dashboard/src/HREmployeeApproval.jsx[m[36m:[m  [1;31mtoken[mBox: {
+[35mfrontend/HR-Dashboard/src/HRLogin.jsx[m[36m:[m  const [temp[1;31mToken[m, setTemp[1;31mToken[m] = useState("");
+[35mfrontend/HR-Dashboard/src/HRLogin.jsx[m[36m:[m      // Store temp [1;31mtoken[m and move to MFA step
+[35mfrontend/HR-Dashboard/src/HRLogin.jsx[m[36m:[m      setTemp[1;31mToken[m(data.temp[1;31mToken[m);
+[35mfrontend/HR-Dashboard/src/HRLogin.jsx[m[36m:[m          temp[1;31mToken[m: temp[1;31mToken[m,
+[35mfrontend/HR-Dashboard/src/HRLogin.jsx[m[36m:[m      localStorage.setItem("hr[1;31mToken[m", data.[1;31mtoken[m);
+[35mfrontend/HR-Dashboard/src/HRLogin.jsx[m[36m:[m          temp[1;31mToken[m: temp[1;31mToken[m
+[35mfrontend/admin-panel/package-lock.json[m[36m:[m        "js-[1;31mtoken[ms": "^4.0.0",
+[35mfrontend/admin-panel/package-lock.json[m[36m:[m    "node_modules/js-[1;31mtoken[ms": {
+[35mfrontend/admin-panel/package-lock.json[m[36m:[m      "resolved": "https://registry.npmjs.org/js-[1;31mtoken[ms/-/js-[1;31mtoken[ms-4.0.0.tgz",
+[35mfrontend/admin-panel/src/AdminHomepage.jsx[m[36m:[mconst [temp[1;31mToken[m, setTemp[1;31mToken[m] = useState(""); // New: Temporary [1;31mtoken[m from login
+[35mfrontend/admin-panel/src/AdminHomepage.jsx[m[36m:[m  // Store temp [1;31mtoken[m and show TOTP verification
+[35mfrontend/admin-panel/src/AdminHomepage.jsx[m[36m:[m  setTemp[1;31mToken[m(data.temp[1;31mToken[m);
+[35mfrontend/customer-frontend/package-lock.json[m[36m:[m        "js-[1;31mtoken[ms": "^4.0.0",
+[35mfrontend/customer-frontend/package-lock.json[m[36m:[m    "node_modules/js-[1;31mtoken[ms": {
+[35mfrontend/customer-frontend/package-lock.json[m[36m:[m      "resolved": "https://registry.npmjs.org/js-[1;31mtoken[ms/-/js-[1;31mtoken[ms-4.0.0.tgz",
+[35mfrontend/customer-frontend/src/Homepage.jsx[m[36m:[m  const fetchUserProfile = async (userId, [1;31mtoken[m) => {
+[35mfrontend/customer-frontend/src/Homepage.jsx[m[36m:[m          ...([1;31mtoken[m && { "Authorization": `Bearer ${[1;31mtoken[m}` })
+[35mfrontend/customer-frontend/src/Homepage.jsx[m[36m:[m      const fullProfile = await fetchUserProfile(data.id, data.[1;31mtoken[m);
+[35mfrontend/customer-frontend/src/Homepage.jsx[m[36m:[m        // Preserve [1;31mtoken[m and other auth data
+[35mfrontend/customer-frontend/src/Homepage.jsx[m[36m:[m        [1;31mtoken[m: data.[1;31mtoken[m,
+[35mfrontend/customer-frontend/src/Homepage.jsx[m[36m:[m  const fullProfile = await fetchUserProfile(userData.id, userData.[1;31mtoken[m);
+[35mfrontend/customer-frontend/src/Homepage.jsx[m[36m:[m    [1;31mtoken[m: userData.[1;31mtoken[m,
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m  console.log("🔑 [1;31mToken[m from URL:", new URLSearchParams(window.location.search).get("[1;31mtoken[m"));
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m  const [[1;31mtoken[m, set[1;31mToken[m] = useState("");
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m  const [isValid[1;31mToken[m, setIsValid[1;31mToken[m] = useState(null);
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m  // Extract [1;31mtoken[m from URL
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m    const [1;31mtoken[mFromUrl = params.get("[1;31mtoken[m");
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m    set[1;31mToken[m([1;31mtoken[mFromUrl || "");
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m  // Verify [1;31mtoken[m on component mount
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m  if (![1;31mtoken[m) {
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m      setIsValid[1;31mToken[m(false);
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m  const verify[1;31mToken[m = async () => {
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m      const res = await fetch(`http://localhost:8080/auth/verify-reset-[1;31mtoken[m/${[1;31mtoken[m}`);
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m          setIsValid[1;31mToken[m(true);
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m          setIsValid[1;31mToken[m(false);
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m        setIsValid[1;31mToken[m(false);
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m  verify[1;31mToken[m();
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m}, [[1;31mtoken[m]); // Make sure this is ONLY [[1;31mtoken[m]
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m          [1;31mtoken[m,
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m  // Invalid [1;31mtoken[m state
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m  if (!isValid[1;31mToken[m) {
+[35mfrontend/customer-frontend/src/ResetPassword.jsx[m[36m:[m  // Valid [1;31mtoken[m - show reset form
+[35mfrontend/customer-frontend/src/components/Header.jsx[m[36m:[m    localStorage.removeItem("[1;31mtoken[m");
+[35mfrontend/customer-frontend/src/components/account-pages/DigitalWallets.jsx[m[36m:[m                    Your card details are securely [1;31mtoken[mized when added to digital wallets.
+[35mfrontend/customer-frontend/src/components/account-pages/DigitalWallets.jsx[m[36m:[m                      A [1;31mtoken[mized version of your card will be stored in the wallet.
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m      const [1;31mtoken[m = localStorage.getItem('[1;31mtoken[m');
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m          'Authorization': `Bearer ${[1;31mtoken[m}`
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m    'Authorization': `Bearer ${[1;31mtoken[m}`,
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m    'Authorization': `Bearer ${[1;31mtoken[m}`,
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m      const [1;31mtoken[m = localStorage.getItem('[1;31mtoken[m');
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m            'Authorization': `Bearer ${[1;31mtoken[m}`
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m            'Authorization': `Bearer ${[1;31mtoken[m}`
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m            'Authorization': `Bearer ${[1;31mtoken[m}`
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m      const [1;31mtoken[m = localStorage.getItem('[1;31mtoken[m');
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m            'Authorization': `Bearer ${[1;31mtoken[m}`
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m            'Authorization': `Bearer ${[1;31mtoken[m}`
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m            'Authorization': `Bearer ${[1;31mtoken[m}`
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m      const [1;31mtoken[m = localStorage.getItem('[1;31mtoken[m');
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m            'Authorization': `Bearer ${[1;31mtoken[m}`
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m            'Authorization': `Bearer ${[1;31mtoken[m}`
+[35mfrontend/customer-frontend/src/components/account-pages/ManageAccounts.jsx[m[36m:[m            'Authorization': `Bearer ${[1;31mtoken[m}`
+[35mfrontend/customer-frontend/src/components/account-pages/VerificationOfDeposit.jsx[m[36m:[m        const [1;31mtoken[m = localStorage.getItem('[1;31mtoken[m');
+[35mfrontend/customer-frontend/src/components/account-pages/VerificationOfDeposit.jsx[m[36m:[m            'Authorization': `Bearer ${[1;31mtoken[m}`
+[35mfrontend/customer-frontend/src/components/account-pages/VerificationOfDeposit.jsx[m[36m:[m                  'Authorization': `Bearer ${[1;31mtoken[m}`
+[35mfrontend/customer-frontend/src/pages/ProfilePage.jsx[m[36m:[m  const fetchSecurityQuestions = async (userId, [1;31mtoken[m) => {
+[35mfrontend/customer-frontend/src/pages/ProfilePage.jsx[m[36m:[m        const [1;31mtoken[m = loggedInUser?.sessionId;
+[35mfrontend/customer-frontend/src/pages/ProfilePage.jsx[m[36m:[m        if ([1;31mtoken[m) {
+[35mfrontend/customer-frontend/src/pages/ProfilePage.jsx[m[36m:[m    // REMOVE [1;31mtoken[m check entirely
+[35mfrontend/customer-frontend/src/pages/SettingsPage.jsx[m[36m:[m      const [1;31mtoken[m = loggedInUser?.sessionId;
+[35mfrontend/customer-frontend/src/pages/SettingsPage.jsx[m[36m:[m          "Authorization": `Bearer ${[1;31mtoken[m}`
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m  const [[1;31mtoken[m, set[1;31mToken[m] = useState("");
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m  const [isValid[1;31mToken[m, setIsValid[1;31mToken[m] = useState(null);
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m  // Extract [1;31mtoken[m and newEmail from URL
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m    const [1;31mtoken[mFromUrl = params.get("[1;31mtoken[m");
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m    set[1;31mToken[m([1;31mtoken[mFromUrl || "");
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m  // Verify [1;31mtoken[m on component mount
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m    if (![1;31mtoken[m || !newEmail) {
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m      setIsValid[1;31mToken[m(false);
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m    const verify[1;31mToken[m = async () => {
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m          `${API_BASE}/auth/verify-email-change/${[1;31mtoken[m}?newEmail=${encodeURIComponent(newEmail)}`
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m          setIsValid[1;31mToken[m(true);
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m          console.error("[1;31mToken[m verification failed:", errorText);
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m          setIsValid[1;31mToken[m(false);
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m        console.error("[1;31mToken[m verification error:", err);
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m        setIsValid[1;31mToken[m(false);
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m    verify[1;31mToken[m();
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m  }, [[1;31mtoken[m, newEmail]);
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m          [1;31mtoken[m: [1;31mtoken[m,
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m        localStorage.removeItem("[1;31mtoken[m");
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m  // Invalid [1;31mtoken[m state
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m  if (!isValid[1;31mToken[m) {
+[35mfrontend/customer-frontend/src/pages/VerifyEmailChange.jsx[m[36m:[m  // Valid [1;31mtoken[m - show email change form
