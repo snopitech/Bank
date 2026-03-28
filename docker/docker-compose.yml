@@ -1,0 +1,47 @@
+services:
+  mysql:
+    image: mysql:8
+    container_name: mysql_local
+    environment:
+      MYSQL_ROOT_PASSWORD: Manoron2021@
+      MYSQL_DATABASE: snopitechbank
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - bank-network
+
+  backend:
+    build: ./backend
+    container_name: backend_local
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/snopitechbank?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Manoron2021@
+    networks:
+      - bank-network
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx_local
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - C:/Users/computer/Desktop/Bank/docker/nginx/html:/usr/share/nginx/html
+    depends_on:
+      - backend
+    networks:
+      - bank-network
+
+networks:
+  bank-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

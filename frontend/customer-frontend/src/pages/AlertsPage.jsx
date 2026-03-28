@@ -5,7 +5,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import LoadingScreen from "../components/LoadingScreen";
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 function AlertsPage() {
   const navigate = useNavigate();

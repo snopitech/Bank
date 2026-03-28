@@ -476,12 +476,12 @@ registrationData.expiryDate = form.expiryDate;
 }
 
 // Choose the right endpoint based on verification type
-let registerUrl = "http://localhost:8080/auth/register";
+let registerUrl = "/auth/register";
 let regRes;
 
 if (verificationType === 'non-us' && idDocument) {
   // For non-US with document, use FormData to send file
-  registerUrl = "http://localhost:8080/auth/register/pending";
+  registerUrl = "/auth/register/pending";
   
   // Create FormData and append data
   const formData = new FormData();
@@ -500,7 +500,7 @@ if (verificationType === 'non-us' && idDocument) {
 } 
 else if (verificationType === 'us') {
   // For US citizens, send to US verification endpoint
-  registerUrl = "http://localhost:8080/auth/us-verification/submit";
+  registerUrl = "/auth/us-verification/submit";
   
   regRes = await fetch(registerUrl, {
     method: "POST",
@@ -554,7 +554,7 @@ console.log("User ID from registration:", userId);
       // STEP 3: Update profile with ADDRESS
       setSuccess("Adding your address...");
       
-      const profileUpdateRes = await fetch(`http://localhost:8080/api/users/${userId}/update-profile`, {
+      const profileUpdateRes = await fetch(`/api/users/${userId}/update-profile`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
@@ -581,7 +581,7 @@ console.log("User ID from registration:", userId);
       
       const parsedAnnualIncome = getIncomeValue(form.annualIncome);
 
-      const financialUpdateRes = await fetch(`http://localhost:8080/api/users/${userId}/update-profile-safe`, {
+      const financialUpdateRes = await fetch(`/api/users/${userId}/update-profile-safe`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
@@ -605,7 +605,7 @@ console.log("User ID from registration:", userId);
       // STEP 5: Add security questions
       setSuccess("Setting up security questions...");
       
-      const securityRes = await fetch(`http://localhost:8080/api/users/${userId}/security-questions`, {
+      const securityRes = await fetch(`/api/users/${userId}/security-questions`, {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
@@ -636,7 +636,7 @@ console.log("User ID from registration:", userId);
       // STEP 6: Fetch updated user profile with all information
       setSuccess("Loading your complete profile...");
 
-      const profileRes = await fetch(`http://localhost:8080/api/users/${userId}`, {
+      const profileRes = await fetch(`/api/users/${userId}`, {
         method: "GET",
       });
 
@@ -646,7 +646,7 @@ console.log("User ID from registration:", userId);
         
         // STEP 7: Fetch security questions separately
         try {
-          const securityQuestionsRes = await fetch(`http://localhost:8080/api/users/${userId}/security-questions`, {
+          const securityQuestionsRes = await fetch(`/api/users/${userId}/security-questions`, {
             method: "GET",
           });
           

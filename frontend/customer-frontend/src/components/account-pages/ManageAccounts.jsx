@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 /* eslint-disable react-hooks/exhaustive-deps */
 // src/components/account-pages/ManageAccounts.jsx
 import { useState, useEffect } from 'react';
@@ -22,7 +23,7 @@ import {
   ClockIcon
 } from '@heroicons/react/24/outline';
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 const ManageAccounts = ({ onNavigate }) => {
   const navigate = useNavigate();
@@ -88,11 +89,11 @@ const creditResponse = await fetch(`${API_BASE}/api/credit/accounts/user/${user.
       }
 
 
-// Fetch loan accounts - using sessionId header instead of userId in URL
-const loanResponse = await fetch(`${API_BASE}/api/loan/accounts`, {
+const loanResponse = await fetch(`${API_BASE}/api/loan/accounts?userId=${user.id}`, {
   headers: {
-    'Authorization': `Bearer ${token}`,
-    'sessionId': user.sessionId // Add sessionId header
+    'Authorization': `Bearer ${sessionId}`,
+    'sessionId': sessionId,
+    'Content-Type': 'application/json'
   }
 });
 

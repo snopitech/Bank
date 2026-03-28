@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 export default function VerificationModal({ userId, email, onClose, onSuccess }) {
   const [code, setCode] = useState(["", "", "", "", "", ""]);

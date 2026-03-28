@@ -7,7 +7,7 @@ import LoadingScreen from "../components/LoadingScreen";
 import { useContactModal } from "../ContactModalContext";
 import ContactInlineForm from "../ContactInlineForm"; // NEW: Import inline form
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 export default function ProfilePage() {
   const navigate = useNavigate();

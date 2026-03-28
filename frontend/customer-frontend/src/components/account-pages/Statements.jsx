@@ -18,7 +18,7 @@ import {
   ChartBarIcon
 } from '@heroicons/react/24/outline';
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 const Statements = () => {
   const [selectedAccount, setSelectedAccount] = useState(null);

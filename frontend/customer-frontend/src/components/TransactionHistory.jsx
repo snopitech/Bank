@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 const TransactionHistory = ({
   transactions,

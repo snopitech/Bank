@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 export default function InternalTransferModal({ accounts, onClose, onSuccess }) {
   const [fromAccount, setFromAccount] = useState("");

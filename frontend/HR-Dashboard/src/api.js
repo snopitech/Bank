@@ -184,7 +184,7 @@ export const enableEmployee = async (id) => {
 
 // HR Login (using employee login + permission check)
 export const hrLogin = async (email, password) => {
-  const response = await fetch(`${API_BASE}/api/employees/login`, {
+  const response = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

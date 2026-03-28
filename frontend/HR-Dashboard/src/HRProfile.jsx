@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ChangePasswordModal from "./ChangePasswordModal";
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 export default function HRProfile() {
   console.log('HRProfile component rendering');

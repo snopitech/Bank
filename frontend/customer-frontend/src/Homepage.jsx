@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
@@ -41,7 +42,7 @@ export default function Login() {
   // Fetch complete user profile after login
   const fetchUserProfile = async (userId, token) => {
     try {
-      const res = await fetch(`http://localhost:8080/api/users/${userId}`, {
+      const res = await fetch(`/api/users/${userId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -64,7 +65,7 @@ export default function Login() {
     e.preventDefault();
 
     try {
-      const res = await fetch("http://localhost:8080/auth/login", {
+      const res = await fetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
@@ -121,29 +122,35 @@ export default function Login() {
   useEffect(() => {
     const handleClickOutside = (event) => {
       // Handle desktop login dropdown
-      if (showLogin && loginRef.current && buttonRef.current) {
-        const clickedInsideDropdown = loginRef.current.contains(event.target);
-        const clickedOnButton = buttonRef.current.contains(event.target);
-        
-        const isFormElement = event.target.closest('form') !== null;
-        const isInsideLoginForm = loginRef.current.contains(event.target) || 
-                                 (isFormElement && loginRef.current.querySelector('form')?.contains(event.target));
-        
-        if (!isInsideLoginForm && !clickedOnButton) {
-          setShowLogin(false);
-        }
-      }
-
-      // Handle mobile login overlay
-      if (showLogin && mobileLoginOverlayRef.current) {
-        const clickedInsideOverlay = mobileLoginOverlayRef.current.contains(event.target);
-        const isFormElement = event.target.closest('form') !== null;
-        const isInsideMobileForm = mobileLoginOverlayRef.current.querySelector('form')?.contains(event.target);
-        
-        if (!clickedInsideOverlay && !isFormElement && !isInsideMobileForm) {
-          setShowLogin(false);
-        }
-      }
+// Handle desktop login dropdown - ONLY on desktop
+if (window.innerWidth >= 768 && showLogin && loginRef.current && buttonRef.current) {
+  const clickedInsideDropdown = loginRef.current.contains(event.target);
+  const clickedOnButton = buttonRef.current.contains(event.target);
+  
+  console.log("Desktop - clickedInsideDropdown:", clickedInsideDropdown);
+  console.log("Desktop - clickedOnButton:", clickedOnButton);
+  
+  const isFormElement = event.target.closest('form') !== null;
+  const isInsideLoginForm = loginRef.current.contains(event.target) || 
+                           (isFormElement && loginRef.current.querySelector('form')?.contains(event.target));
+  
+  if (!isInsideLoginForm && !clickedOnButton) {
+    console.log("Closing desktop login");
+    setShowLogin(false);
+  }
+}
+// Handle mobile login overlay
+if (showLogin && mobileLoginOverlayRef.current) {
+  console.log("Click event:", event.target);
+  console.log("Is target overlay background?", event.target === mobileLoginOverlayRef.current);
+  console.log("Is click inside form?", mobileLoginOverlayRef.current.querySelector('form')?.contains(event.target));
+  
+  // Only close if clicking on the overlay background
+  if (event.target === mobileLoginOverlayRef.current) {
+    console.log("Closing login form");
+    setShowLogin(false);
+  }
+}
 
       // Handle mobile menu
       if (isMobileMenuOpen && mobileMenuRef.current && mobileMenuButtonRef.current) {
@@ -387,14 +394,15 @@ export default function Login() {
       {/* Mobile Login Form Overlay */}
       {showLogin && (
         <div 
-          ref={mobileLoginOverlayRef}
-          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 md:hidden overflow-y-auto"
-          onClick={(e) => {
-            if (e.target === mobileLoginOverlayRef.current) {
-              setShowLogin(false);
-            }
-          }}
-        >
+  ref={mobileLoginOverlayRef}
+  className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 md:hidden overflow-y-auto"
+  onClick={(e) => {
+    // Only close if clicking directly on the overlay background, not on the form
+    if (e.target === mobileLoginOverlayRef.current) {
+      setShowLogin(false);
+    }
+  }}
+>
           <div 
             className="bg-white rounded-xl shadow-2xl w-full max-w-sm mt-16"
             onClick={(e) => e.stopPropagation()}
@@ -792,6 +800,11 @@ export default function Login() {
                   <a href="#" className="hover:text-white transition">Security</a>
                   <a href="#" className="hover:text-white transition">Disclosures</a>
                 </p>
+                 {/* ADD THIS SIMPLE BUTTON SECTION */}
+               <div className="flex justify-center gap-4 my-4">
+               <a href="/admin" className="text-red-400 hover:text-white transition">Admin Panel</a>
+              <a href="/hr" className="text-blue-400 hover:text-white transition">HR Dashboard</a>
+               </div>
                 <p>Snopitech Bank N.A. Member FDIC. Equal Housing Lender.</p>
                 <p className="mt-4">
                   Need help?{" "}

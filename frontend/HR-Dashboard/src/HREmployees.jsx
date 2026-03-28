@@ -24,7 +24,7 @@ const HREmployees = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:8080/api/employees/admin/all');
+      const response = await fetch('/api/employees/admin/all');
       if (!response.ok) throw new Error('Failed to fetch employees');
       const data = await response.json();
       setEmployees(data);
@@ -65,7 +65,7 @@ const HREmployees = () => {
     
     setActionLoading(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/employees/admin/${employee.id}/disable`, {
+      const response = await fetch(`/api/employees/admin/${employee.id}/disable`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -89,7 +89,7 @@ const HREmployees = () => {
     
     setActionLoading(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/employees/admin/${employee.id}/enable`, {
+      const response = await fetch(`/api/employees/admin/${employee.id}/enable`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -115,7 +115,7 @@ const HREmployees = () => {
     setResetResult(null);
     
     try {
-      const response = await fetch(`http://localhost:8080/api/employees/admin/${employee.id}/reset-password`, {
+      const response = await fetch(`/api/employees/admin/${employee.id}/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -148,7 +148,7 @@ const HREmployees = () => {
     
     setActionLoading(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/employees/admin/${selectedEmployee.id}`, {
+      const response = await fetch(`/api/employees/admin/${selectedEmployee.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
       });

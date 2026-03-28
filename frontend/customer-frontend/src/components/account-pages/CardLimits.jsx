@@ -33,7 +33,7 @@ const CardLimits = () => {
       const user = JSON.parse(userStr);
       
       // Fetch user's cards
-      const response = await fetch(`http://localhost:8080/api/cards/user/${user.id}`);
+      const response = await fetch(`/api/cards/user/${user.id}`);
       if (response.ok) {
         const data = await response.json();
         setCards(data);

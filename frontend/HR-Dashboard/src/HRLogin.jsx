@@ -1,8 +1,9 @@
+/* eslint-disable no-unused-vars */
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import HRCreateEmployee from "./HRCreateEmployee"; // Import your exact component
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 export default function HRLogin() {
   const navigate = useNavigate();
@@ -174,7 +175,7 @@ export default function HRLogin() {
 
   // Handle back to admin home
   const handleBackToAdmin = () => {
-    window.location.href = "http://localhost:5173/";
+    window.location.href = "/";
   };
 
   const logoUrl = "https://snopitechstore.online/public-images/Mylogo.png";

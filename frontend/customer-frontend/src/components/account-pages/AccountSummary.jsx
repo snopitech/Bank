@@ -19,7 +19,7 @@ import {
 import AccountCard from '../AccountCard';
 import TransactionHistory from '../TransactionHistory';
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 const AccountSummary = () => {
   const navigate = useNavigate();

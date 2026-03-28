@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 const HRUsers = () => {
   const [users, setUsers] = useState([]);

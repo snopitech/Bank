@@ -1,7 +1,8 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 const HREmployeeApproval = () => {
   const navigate = useNavigate();

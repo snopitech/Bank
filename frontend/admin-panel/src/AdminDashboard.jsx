@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();

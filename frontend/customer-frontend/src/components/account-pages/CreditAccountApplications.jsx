@@ -15,7 +15,7 @@ import {
   CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 const CreditAccountApplications = () => {
   const [creditAccounts, setCreditAccounts] = useState([]);

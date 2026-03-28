@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, UserIcon, PhoneIcon, EnvelopeIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 export default function ZellePage() {
   const navigate = useNavigate();

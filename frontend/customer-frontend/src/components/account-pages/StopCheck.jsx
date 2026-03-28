@@ -15,7 +15,7 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 const StopCheck = () => {
   const [selectedAccount, setSelectedAccount] = useState(null);

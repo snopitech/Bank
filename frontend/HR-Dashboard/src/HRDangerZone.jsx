@@ -20,7 +20,7 @@ const HRDangerZone = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/users');
+      const response = await fetch('/api/users');
       if (!response.ok) throw new Error('Failed to fetch users');
       const data = await response.json();
       setUsers(data);
@@ -50,7 +50,7 @@ const HRDangerZone = () => {
     setActionResult(null);
     
     try {
-      const response = await fetch('http://localhost:8080/api/transactions/clear', {
+      const response = await fetch('/api/transactions/clear', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -84,7 +84,7 @@ const HRDangerZone = () => {
   try {
     console.log("🔍 Attempting to delete user ID:", selectedUser.id);
     
-    const response = await fetch(`http://localhost:8080/api/users/${selectedUser.id}`, {
+    const response = await fetch(`/api/users/${selectedUser.id}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' }
     });

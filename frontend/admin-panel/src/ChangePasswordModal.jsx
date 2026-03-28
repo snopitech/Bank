@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 export default function ChangePasswordModal({ isOpen, onClose, userEmail, onSuccess }) {
   const [form, setForm] = useState({

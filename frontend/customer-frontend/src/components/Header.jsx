@@ -146,7 +146,7 @@ function Header({ name }) {
     });
 
    try {
-  let endpoint = 'http://localhost:8080/api/card-payments/pay'; // default for debit cards
+  let endpoint = '/api/card-payments/pay'; // default for debit cards
   
   console.log('Card info:', cardInfo);
   console.log('Is payoff mode:', isPayoff);
@@ -154,10 +154,10 @@ function Header({ name }) {
   if (cardInfo && cardInfo.cardType && cardInfo.cardType.startsWith('CREDIT')) {
     // For credit cards, choose between send money or payoff
     if (isPayoff) {
-      endpoint = 'http://localhost:8080/api/credit-card-payments/payoff';
+      endpoint = '/api/credit-card-payments/payoff';
       console.log('🔵 USING PAYOFF ENDPOINT');
     } else {
-      endpoint = 'http://localhost:8080/api/credit-card-payments/pay';
+      endpoint = '/api/credit-card-payments/pay';
       console.log('🟢 USING SEND MONEY ENDPOINT');
     }
   } else {

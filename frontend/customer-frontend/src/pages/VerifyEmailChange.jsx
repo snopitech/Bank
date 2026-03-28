@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "";
 
 export default function VerifyEmailChange() {
   const navigate = useNavigate();
