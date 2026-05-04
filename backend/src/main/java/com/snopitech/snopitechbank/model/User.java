@@ -87,6 +87,9 @@ private boolean accountLocked = false;
 @Column(name = "lock_expiry")
 private LocalDateTime lockExpiry;
 
+@Column(unique = true, length = 50)
+private String passportNumber;
+
     // ⭐ FINANCIAL INFORMATION FIELDS
     private String employmentStatus;      // EMPLOYED, SELF_EMPLOYED, UNEMPLOYED, RETIRED, STUDENT
     private Double annualIncome;          // Store as Double for monetary values
@@ -430,6 +433,13 @@ public void setSessionId(String sessionId) { this.sessionId = sessionId; }
     return failedLoginAttempts;
 }
 
+@SuppressWarnings("unused")
+private Long openedByEmployeeId;
+@SuppressWarnings("unused")
+private String openedByEmployeeName;
+@SuppressWarnings("unused")
+private LocalDateTime openedAt;
+
 public void setFailedLoginAttempts(int failedLoginAttempts) {
     this.failedLoginAttempts = failedLoginAttempts;
 }
@@ -445,6 +455,7 @@ public void setAccountLocked(boolean accountLocked) {
 public LocalDateTime getLockExpiry() {
     return lockExpiry;
 }
+
 
 public void setLockExpiry(LocalDateTime lockExpiry) {
     this.lockExpiry = lockExpiry;

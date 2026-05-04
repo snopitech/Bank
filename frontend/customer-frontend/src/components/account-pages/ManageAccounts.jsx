@@ -72,13 +72,12 @@ const ManageAccounts = ({ onNavigate }) => {
         console.log("❌ Regular accounts response not OK:", accountsResponse.status);
       }
 
-     // Fetch credit accounts
-const creditResponse = await fetch(`${API_BASE}/api/credit/accounts/user/${user.id}`, {
-  headers: {
-    'Authorization': `Bearer ${token}`,
-    'sessionId': user.sessionId // Add sessionId for consistency
-  }
-});
+      // Fetch credit accounts
+      const creditResponse = await fetch(`${API_BASE}/api/credit/accounts/user/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       if (creditResponse.ok) {
         const creditData = await creditResponse.json();
@@ -88,24 +87,18 @@ const creditResponse = await fetch(`${API_BASE}/api/credit/accounts/user/${user.
         console.log("❌ Credit accounts response not OK:", creditResponse.status);
       }
 
-
-const loanResponse = await fetch(`${API_BASE}/api/loan/accounts?userId=${user.id}`, {
-  headers: {
-    'Authorization': `Bearer ${sessionId}`,
-    'sessionId': sessionId,
-    'Content-Type': 'application/json'
-  }
-});
-
-if (loanResponse.ok) {
-  const loanData = await loanResponse.json();
-  console.log("✅ Loan accounts fetched:", loanData);
-  setLoanAccounts(loanData);
-} else {
-  console.log("❌ Loan accounts response not OK:", loanResponse.status);
-  const errorText = await loanResponse.text();
-  console.log("Error response:", errorText);
-}
+      // Fetch loan accounts - NO sessionId header (fixed)
+      const loanResponse = await fetch(`${API_BASE}/api/loan/accounts?userId=${user.id}`);
+      
+      if (loanResponse.ok) {
+        const loanData = await loanResponse.json();
+        console.log("✅ Loan accounts fetched:", loanData);
+        setLoanAccounts(loanData);
+      } else {
+        console.log("❌ Loan accounts response not OK:", loanResponse.status);
+        const errorText = await loanResponse.text();
+        console.log("Error response:", errorText);
+      }
 
     } catch (error) {
       console.error('Error fetching accounts:', error);
@@ -569,11 +562,11 @@ const getAllAccounts = () => {
                           ) : isLoan ? (
                             <>
                              <span className="text-gray-700 font-medium">
-                             Balance: {formatCurrency(account.outstandingBalance || 0)} {/* Amount owed including interest */}
+                             Balance: {formatCurrency(account.outstandingBalance || 0)}
                              </span>
                              <span className="text-gray-400">•</span>
                              <span className="text-gray-500">
-                             Available: {formatCurrency((account.approvedAmount - account.outstandingBalance) || 0)} {/* Remaining to borrow */}
+                             Available: {formatCurrency((account.approvedAmount - account.outstandingBalance) || 0)}
                              </span>
                              <span className="text-gray-400">•</span>
                              <span className="text-gray-500">

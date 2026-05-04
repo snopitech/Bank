@@ -503,7 +503,7 @@ const AdminDashboard = () => {
                 
           <button 
             style={styles.button}
-            onClick={() => navigate('/open-account')}
+            onClick={() => navigate('/admin/open-account')}
             onMouseEnter={(e) => e.currentTarget.style.background = '#5a67d8'}
             onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
           >
@@ -694,6 +694,16 @@ const AdminDashboard = () => {
               🔐 Setup Two-Factor Auth
             </button>
           )}
+
+          {/* NEW: Snopitech Teams Button */}
+          <button 
+            style={styles.button}
+            onClick={() => window.open('http://localhost:5173', '_blank')}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#5a67d8'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
+          >
+            💬 Snopitech Teams
+          </button>
 
         </div>
       </div>

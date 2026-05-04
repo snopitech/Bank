@@ -1,24 +1,119 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+const API_BASE = "http://localhost:8080/api";
 
 const AdminOpenAccount = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchEmail, setSearchEmail] = useState('');
   const [accountType, setAccountType] = useState('');
   const [initialDeposit, setInitialDeposit] = useState('');
   const [success, setSuccess] = useState(false);
   const [newAccount, setNewAccount] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState(null);
+  const [searchResult, setSearchResult] = useState(null);
+  const [error, setError] = useState("");
+  
+  // Get employee ID from localStorage
+  const [employeeId, setEmployeeId] = useState(null);
 
-  // Mock customers database
-  const [customers] = useState([
-    { id: 1, name: 'Michael Agbonifo', email: 'michael@snopitech.com', phone: '(713) 870-1132', ssnLast4: '7789', existingAccounts: 2 },
-    { id: 2, name: 'Cynthia Ekeh', email: 'cynthiaekeh360@gmail.com', phone: '(081) 315-2879', ssnLast4: '3381', existingAccounts: 2 },
-    { id: 3, name: 'Tracy Agbonifo', email: 'snopitech+40@gmail.com', phone: '(713) 870-1100', ssnLast4: '2656', existingAccounts: 2 },
-    { id: 4, name: 'Bose Agbonifo', email: 'snopitech+1@gmail.com', phone: '(713) 870-1131', ssnLast4: '7788', existingAccounts: 0 },
-    { id: 5, name: 'Test User', email: 'test.cards@email.com', phone: '123-456-7890', ssnLast4: '6789', existingAccounts: 2 },
-  ]);
+  useEffect(() => {
+    const adminUser = localStorage.getItem('adminUser');
+    const employeeUser = localStorage.getItem('employeeUser');
+    
+    if (adminUser) {
+      const user = JSON.parse(adminUser);
+      setEmployeeId(user.id);
+    } else if (employeeUser) {
+      const user = JSON.parse(employeeUser);
+      setEmployeeId(user.id);
+    } else {
+      navigate('/');
+    }
+  }, [navigate]);
+
+  const accountTypes = [
+    { id: 'CHECKING', name: 'Personal Checking', features: ['Debit Card Included', 'Online Banking', 'Mobile Check Deposit'], interest: '0.01%', fee: '$0' },
+    { id: 'SAVINGS', name: 'Personal Savings', features: ['High-Yield Interest', 'No Monthly Fee', 'Automatic Savings'], interest: '2.25%', fee: '$0' },
+    { id: 'BUSINESS', name: 'Business Account', features: ['Business Debit Card', 'Employee Cards', 'Merchant Services'], interest: '0.05%', fee: '$15', requiresApproval: true }
+  ];
+
+  // Security questions array
+  const securityQuestions = [
+    "What was the name of your first pet?",
+    "What was your childhood nickname?",
+    "What is your mother's maiden name?",
+    "What city were you born in?",
+    "What was the name of your elementary school?",
+    "What is your favorite book?",
+    "What is your favorite movie?",
+    "What was the make of your first car?",
+    "What is your father's middle name?",
+    "What hospital were you born in?"
+  ];
+
+  // Employment Status options
+  const employmentStatuses = [
+    "Employed Full-Time",
+    "Employed Part-Time",
+    "Self-Employed",
+    "Retired",
+    "Student",
+    "Homemaker",
+    "Unemployed",
+    "Disabled"
+  ];
+
+  // Income ranges
+  const incomeRanges = [
+    "Under $25,000",
+    "$25,000 - $49,999",
+    "$50,000 - $74,999",
+    "$75,000 - $99,999",
+    "$100,000 - $149,999",
+    "$150,000 - $199,999",
+    "$200,000 - $299,999",
+    "$300,000+"
+  ];
+
+  // Source of Funds options
+  const sourceOfFundsOptions = [
+    "Employment Salary",
+    "Self-Employment/Business Income",
+    "Investments",
+    "Retirement/Pension",
+    "Inheritance",
+    "Family Support",
+    "Savings",
+    "Other"
+  ];
+
+  // Investment Objectives
+  const investmentObjectives = [
+    "Capital Preservation",
+    "Income Generation",
+    "Growth",
+    "Aggressive Growth",
+    "Retirement Planning",
+    "Education Savings",
+    "Wealth Transfer",
+    "Tax Minimization"
+  ];
+
+  // Tax Brackets
+  const taxBrackets = [
+    "10% - $0 to $11,000",
+    "12% - $11,001 to $44,725",
+    "22% - $44,726 to $95,375",
+    "24% - $95,376 to $182,100",
+    "32% - $182,101 to $231,250",
+    "35% - $231,251 to $578,125",
+    "37% - $578,126+",
+    "Not Sure"
+  ];
 
   const [newCustomer, setNewCustomer] = useState({
     firstName: '',
@@ -32,26 +127,87 @@ const AdminOpenAccount = () => {
     city: '',
     state: '',
     zipCode: '',
-    country: 'USA'
+    country: 'USA',
+    birthCity: '',
+    birthState: '',
+    birthCountry: 'USA',
+    employmentStatus: '',
+    annualIncome: '',
+    sourceOfFunds: '',
+    investmentObjective: '',
+    taxBracket: '',
+    securityQuestion1: '',
+    securityAnswer1: '',
+    securityQuestion2: '',
+    securityAnswer2: '',
+    securityQuestion3: '',
+    securityAnswer3: '',
+    password: ''
   });
 
-  const accountTypes = [
-    { id: 'checking', name: 'Personal Checking', features: ['Debit Card Included', 'Online Banking', 'Mobile Check Deposit'], interest: '0.01%', fee: '$0' },
-    { id: 'savings', name: 'Personal Savings', features: ['High-Yield Interest', 'No Monthly Fee', 'Automatic Savings'], interest: '2.25%', fee: '$0' },
-    { id: 'business-checking', name: 'Business Checking', features: ['Business Debit Card', 'Employee Cards', 'Merchant Services'], interest: '0.05%', fee: '$15' },
-    { id: 'business-savings', name: 'Business Savings', features: ['Higher Limits', 'Business Tools', 'FDIC Insured'], interest: '1.85%', fee: '$10' },
-    { id: 'money-market', name: 'Money Market', features: ['Tiered Interest', 'Check Writing', 'Higher Rates'], interest: '3.50%', fee: '$12' },
-    { id: 'cd', name: 'Certificate of Deposit', features: ['Fixed Rate', 'Guaranteed Returns', 'Terms 3-60 months'], interest: '4.25%', fee: '$0' }
-  ];
+  const [showPassword, setShowPassword] = useState(false);
 
-  const filteredCustomers = customers.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone.includes(searchTerm)
-  );
+  // Format SSN as XXX-XX-XXXX
+  const handleSSNChange = (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 3 && value.length <= 5) {
+      value = value.slice(0, 3) + '-' + value.slice(3);
+    } else if (value.length > 5) {
+      value = value.slice(0, 3) + '-' + value.slice(3, 5) + '-' + value.slice(5, 9);
+    }
+    setNewCustomer({ ...newCustomer, ssn: value });
+  };
+
+  // Search customer by email
+  const handleSearch = async () => {
+    if (!searchEmail.trim()) {
+      setSearchError('Please enter an email address');
+      return;
+    }
+
+    setLoading(true);
+    setSearchError(null);
+    setSearchResult(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/banker/customers/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          employeeId: employeeId,
+          searchEmail: searchEmail.trim()
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Search failed');
+      }
+
+      setSearchResult(data);
+      setSearchError(null);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchError(error.message);
+      setSearchResult(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCustomerSelect = (customer) => {
-    setSelectedCustomer(customer);
+    setSelectedCustomer({
+      id: customer.customerId,
+      name: `${customer.firstName} ${customer.lastName}`,
+      email: customer.email,
+      phone: customer.phone,
+      ssnLast4: customer.maskedSsn ? customer.maskedSsn.slice(-4) : '****',
+      existingAccounts: customer.existingAccounts.length,
+      availableAccountTypes: customer.availableAccountTypes
+    });
     setStep(2);
   };
 
@@ -61,48 +217,189 @@ const AdminOpenAccount = () => {
 
   const handleNewCustomerChange = (e) => {
     setNewCustomer({ ...newCustomer, [e.target.name]: e.target.value });
+    setError("");
   };
 
-  const handleNewCustomerSubmit = (e) => {
+  const handleNewCustomerSubmit = async (e) => {
     e.preventDefault();
-    // In real app, API call to create customer
-    const newId = customers.length + 1;
-    const createdCustomer = {
-      id: newId,
-      name: `${newCustomer.firstName} ${newCustomer.lastName}`,
-      email: newCustomer.email,
-      phone: newCustomer.phone,
-      ssnLast4: newCustomer.ssn.slice(-4),
-      existingAccounts: 0
-    };
-    setSelectedCustomer(createdCustomer);
-    setStep(2);
+    setLoading(true);
+    setError("");
+    
+    // Validate password
+    if (!newCustomer.password || newCustomer.password.length < 8) {
+      setError("Password must be at least 8 characters");
+      setLoading(false);
+      return;
+    }
+    
+    // Validate required fields
+    if (!newCustomer.securityQuestion1 || !newCustomer.securityAnswer1 ||
+        !newCustomer.securityQuestion2 || !newCustomer.securityAnswer2 ||
+        !newCustomer.securityQuestion3 || !newCustomer.securityAnswer3) {
+      setError("Please complete all three security questions");
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      // Use the new banker endpoint to create customer WITHOUT auto-creating accounts
+      const response = await fetch(`${API_BASE}/banker/customers/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: employeeId,
+          firstName: newCustomer.firstName,
+          lastName: newCustomer.lastName,
+          email: newCustomer.email,
+          phone: newCustomer.phone,
+          dateOfBirth: newCustomer.dateOfBirth,
+          ssn: newCustomer.ssn,
+          addressLine1: newCustomer.addressLine1,
+          addressLine2: newCustomer.addressLine2 || "",
+          city: newCustomer.city,
+          state: newCustomer.state,
+          zipCode: newCustomer.zipCode,
+          country: newCustomer.country,
+          birthCity: newCustomer.birthCity,
+          birthState: newCustomer.birthState,
+          birthCountry: newCustomer.birthCountry,
+          employmentStatus: newCustomer.employmentStatus,
+          annualIncome: newCustomer.annualIncome,
+          sourceOfFunds: newCustomer.sourceOfFunds,
+          riskTolerance: newCustomer.investmentObjective,
+          taxBracket: newCustomer.taxBracket,
+          password: newCustomer.password,
+          securityQuestion1: newCustomer.securityQuestion1,
+          securityAnswer1: newCustomer.securityAnswer1,
+          securityQuestion2: newCustomer.securityQuestion2,
+          securityAnswer2: newCustomer.securityAnswer2,
+          securityQuestion3: newCustomer.securityQuestion3,
+          securityAnswer3: newCustomer.securityAnswer3
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create customer");
+      }
+      
+      // Now search for the customer to get their available account types
+      const searchResponse = await fetch(`${API_BASE}/banker/customers/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: employeeId,
+          searchEmail: newCustomer.email
+        })
+      });
+      
+      const searchData = await searchResponse.json();
+      
+      setSelectedCustomer({
+        id: searchData.customerId,
+        name: `${newCustomer.firstName} ${newCustomer.lastName}`,
+        email: newCustomer.email,
+        phone: newCustomer.phone,
+        ssnLast4: newCustomer.ssn.slice(-4),
+        existingAccounts: searchData.existingAccounts.length,
+        availableAccountTypes: searchData.availableAccountTypes
+      });
+      
+      setStep(2);
+      setError("");
+      
+    } catch (err) {
+      console.error("Create customer error:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAccountTypeSelect = (type) => {
     setAccountType(type);
   };
 
-  const handleOpenAccount = () => {
-    if (!accountType || !initialDeposit) {
-      alert('Please select account type and enter initial deposit');
+  const handleOpenAccount = async () => {
+    if (!accountType) {
+      alert('Please select an account type');
       return;
     }
 
-    // Mock account creation
-    const accountNumber = '****' + Math.floor(1000 + Math.random() * 9000);
-    const cardNumber = accountType.includes('checking') ? '****-****-****-' + Math.floor(1000 + Math.random() * 9000) : null;
+    setLoading(true);
 
-    setNewAccount({
-      accountNumber,
-      cardNumber,
-      type: accountTypes.find(t => t.id === accountType).name,
-      initialDeposit: parseFloat(initialDeposit),
-      openedDate: new Date().toLocaleDateString(),
-      routingNumber: '842917356'
-    });
+    try {
+      if (accountType === 'BUSINESS') {
+        const response = await fetch(`${API_BASE}/banker/business-applications/submit`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            employeeId: employeeId,
+            customerId: selectedCustomer.id,
+            businessName: `${selectedCustomer.name}'s Business`,
+            businessType: 'SOLE_PROPRIETORSHIP',
+            businessAddress: 'Business Address',
+            ein: '00-0000000',
+            businessDocuments: null
+          })
+        });
 
-    setSuccess(true);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to submit business application');
+        }
+
+        setNewAccount({
+          accountNumber: 'Pending Approval',
+          cardNumber: null,
+          type: 'Business Account',
+          initialDeposit: 0,
+          openedDate: new Date().toLocaleDateString(),
+          routingNumber: 'Pending',
+          requiresApproval: true
+        });
+      } else {
+        const response = await fetch(`${API_BASE}/banker/accounts/open-instant`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            employeeId: employeeId,
+            customerId: selectedCustomer.id,
+            accountType: accountType,
+            initialDeposit: parseFloat(initialDeposit) || 0
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to open account');
+        }
+
+        setNewAccount({
+          accountNumber: data.accountNumber,
+          cardNumber: accountType === 'CHECKING' ? 'Card will be mailed' : null,
+          type: data.accountType === 'CHECKING' ? 'Personal Checking' : 'Personal Savings',
+          initialDeposit: data.balance,
+          openedDate: new Date(data.openedAt).toLocaleDateString(),
+          routingNumber: data.routingNumber,
+          requiresApproval: false
+        });
+      }
+
+      setSuccess(true);
+    } catch (error) {
+      console.error('Open account error:', error);
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetForm = () => {
@@ -112,6 +409,39 @@ const AdminOpenAccount = () => {
     setInitialDeposit('');
     setSuccess(false);
     setNewAccount(null);
+    setSearchEmail('');
+    setSearchResult(null);
+    setSearchError(null);
+    setError("");
+    setNewCustomer({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      ssn: '',
+      dateOfBirth: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: 'USA',
+      birthCity: '',
+      birthState: '',
+      birthCountry: 'USA',
+      employmentStatus: '',
+      annualIncome: '',
+      sourceOfFunds: '',
+      investmentObjective: '',
+      taxBracket: '',
+      securityQuestion1: '',
+      securityAnswer1: '',
+      securityQuestion2: '',
+      securityAnswer2: '',
+      securityQuestion3: '',
+      securityAnswer3: '',
+      password: ''
+    });
   };
 
   const styles = {
@@ -193,11 +523,31 @@ const AdminOpenAccount = () => {
       border: '1px solid #e0e0e0',
       borderRadius: '8px',
       fontSize: '16px',
-      marginBottom: '20px'
+      marginBottom: '10px'
+    },
+    searchButton: {
+      width: '100%',
+      padding: '12px',
+      background: '#667eea',
+      color: 'white',
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: '16px',
+      fontWeight: '500',
+      cursor: 'pointer'
+    },
+    errorMessage: {
+      background: '#fee2e2',
+      color: '#ef4444',
+      padding: '12px',
+      borderRadius: '8px',
+      marginBottom: '15px',
+      fontSize: '14px'
     },
     customerList: {
       maxHeight: '400px',
-      overflowY: 'auto'
+      overflowY: 'auto',
+      marginTop: '20px'
     },
     customerCard: {
       padding: '15px',
@@ -254,7 +604,8 @@ const AdminOpenAccount = () => {
       display: 'block',
       marginBottom: '5px',
       color: '#666',
-      fontSize: '14px'
+      fontSize: '14px',
+      fontWeight: '500'
     },
     input: {
       width: '100%',
@@ -361,12 +712,22 @@ const AdminOpenAccount = () => {
       cursor: 'pointer',
       width: '100%',
       marginTop: '10px'
+    },
+    sectionDivider: {
+      borderTop: '1px solid #e0e0e0',
+      margin: '20px 0',
+      paddingTop: '20px'
+    },
+    sectionTitle: {
+      fontSize: '18px',
+      fontWeight: '600',
+      color: '#333',
+      marginBottom: '15px'
     }
   };
 
   return (
     <div style={styles.container}>
-      {/* Header */}
       <div style={styles.header}>
         <h1 style={styles.headerTitle}>Open New Account</h1>
         <button style={styles.backButton} onClick={() => navigate('/dashboard')}>
@@ -374,7 +735,6 @@ const AdminOpenAccount = () => {
         </button>
       </div>
 
-      {/* Step Indicator */}
       <div style={styles.stepIndicator}>
         <div style={styles.stepItem}>
           <div style={{...styles.stepCircle, ...(step >= 1 ? styles.stepActive : styles.stepInactive)}}>1</div>
@@ -390,40 +750,61 @@ const AdminOpenAccount = () => {
         </div>
       </div>
 
-      {/* Step 1: Select Customer */}
+      {/* Step 1: Search Customer */}
       {step === 1 && (
         <div style={styles.content}>
-          <h2 style={{marginBottom: '20px'}}>Select Customer</h2>
+          <h2 style={{marginBottom: '20px'}}>Find Customer</h2>
           
           <div style={styles.searchBox}>
             <input
-              type="text"
-              placeholder="Search by name, email, or phone..."
+              type="email"
+              placeholder="Enter customer email address..."
               style={styles.searchInput}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchEmail}
+              onChange={(e) => setSearchEmail(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             />
+            <button 
+              style={styles.searchButton} 
+              onClick={handleSearch}
+              disabled={loading}
+            >
+              {loading ? 'Searching...' : 'Search Customer'}
+            </button>
           </div>
 
-          <div style={styles.customerList}>
-            {filteredCustomers.map(customer => (
+          {searchError && (
+            <div style={styles.errorMessage}>
+              ⚠️ {searchError}
+            </div>
+          )}
+
+          {searchResult && !searchError && (
+            <div style={styles.customerList}>
               <div
-                key={customer.id}
                 style={styles.customerCard}
-                onClick={() => handleCustomerSelect(customer)}
+                onClick={() => handleCustomerSelect(searchResult)}
                 onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
               >
                 <div style={styles.customerInfo}>
-                  <div style={styles.customerName}>{customer.name}</div>
+                  <div style={styles.customerName}>
+                    {searchResult.firstName} {searchResult.lastName}
+                  </div>
                   <div style={styles.customerDetails}>
-                    {customer.email} • {customer.phone} • SSN ***-**-{customer.ssnLast4}
+                    {searchResult.email} • {searchResult.phone || 'No phone'} • SSN {searchResult.maskedSsn}
+                  </div>
+                  <div style={styles.customerDetails}>
+                    Existing: {searchResult.existingAccounts.join(', ') || 'None'} | 
+                    Available: {searchResult.availableAccountTypes.join(', ')}
                   </div>
                 </div>
-                <span style={styles.badge}>{customer.existingAccounts} accounts</span>
+                <span style={styles.badge}>
+                  {searchResult.existingAccounts.length} accounts
+                </span>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
 
           <button
             style={styles.newCustomerButton}
@@ -434,150 +815,216 @@ const AdminOpenAccount = () => {
         </div>
       )}
 
-      {/* Step 1b: New Customer Form */}
+      {/* Step 3: New Customer Form */}
       {step === 3 && (
         <div style={styles.content}>
           <h2 style={{marginBottom: '20px'}}>New Customer Information</h2>
           
+          {error && (
+            <div style={styles.errorMessage}>
+              ⚠️ {error}
+            </div>
+          )}
+
           <form onSubmit={handleNewCustomerSubmit}>
-            <div style={styles.form}>
-              <div>
-                <label style={styles.label}>First Name *</label>
-                <input
-                  type="text"
-                  name="firstName"
-                  style={styles.input}
-                  value={newCustomer.firstName}
-                  onChange={handleNewCustomerChange}
-                  required
-                />
-              </div>
-              <div>
-                <label style={styles.label}>Last Name *</label>
-                <input
-                  type="text"
-                  name="lastName"
-                  style={styles.input}
-                  value={newCustomer.lastName}
-                  onChange={handleNewCustomerChange}
-                  required
-                />
-              </div>
-              <div style={styles.formFull}>
-                <label style={styles.label}>Email *</label>
-                <input
-                  type="email"
-                  name="email"
-                  style={styles.input}
-                  value={newCustomer.email}
-                  onChange={handleNewCustomerChange}
-                  required
-                />
-              </div>
-              <div>
-                <label style={styles.label}>Phone *</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  style={styles.input}
-                  value={newCustomer.phone}
-                  onChange={handleNewCustomerChange}
-                  required
-                />
-              </div>
-              <div>
-                <label style={styles.label}>SSN *</label>
-                <input
-                  type="text"
-                  name="ssn"
-                  style={styles.input}
-                  placeholder="XXX-XX-XXXX"
-                  value={newCustomer.ssn}
-                  onChange={handleNewCustomerChange}
-                  required
-                />
-              </div>
-              <div>
-                <label style={styles.label}>Date of Birth *</label>
-                <input
-                  type="date"
-                  name="dateOfBirth"
-                  style={styles.input}
-                  value={newCustomer.dateOfBirth}
-                  onChange={handleNewCustomerChange}
-                  required
-                />
-              </div>
-              <div style={styles.formFull}>
-                <label style={styles.label}>Address Line 1 *</label>
-                <input
-                  type="text"
-                  name="addressLine1"
-                  style={styles.input}
-                  value={newCustomer.addressLine1}
-                  onChange={handleNewCustomerChange}
-                  required
-                />
-              </div>
-              <div style={styles.formFull}>
-                <label style={styles.label}>Address Line 2</label>
-                <input
-                  type="text"
-                  name="addressLine2"
-                  style={styles.input}
-                  value={newCustomer.addressLine2}
-                  onChange={handleNewCustomerChange}
-                />
-              </div>
-              <div>
-                <label style={styles.label}>City *</label>
-                <input
-                  type="text"
-                  name="city"
-                  style={styles.input}
-                  value={newCustomer.city}
-                  onChange={handleNewCustomerChange}
-                  required
-                />
-              </div>
-              <div>
-                <label style={styles.label}>State *</label>
-                <input
-                  type="text"
-                  name="state"
-                  style={styles.input}
-                  value={newCustomer.state}
-                  onChange={handleNewCustomerChange}
-                  required
-                />
-              </div>
-              <div>
-                <label style={styles.label}>ZIP Code *</label>
-                <input
-                  type="text"
-                  name="zipCode"
-                  style={styles.input}
-                  value={newCustomer.zipCode}
-                  onChange={handleNewCustomerChange}
-                  required
-                />
-              </div>
-              <div>
-                <label style={styles.label}>Country *</label>
-                <select
-                  name="country"
-                  style={styles.select}
-                  value={newCustomer.country}
-                  onChange={handleNewCustomerChange}
-                >
-                  <option value="USA">United States</option>
-                  <option value="Canada">Canada</option>
-                </select>
+            {/* Personal Information */}
+            <div style={styles.sectionDivider}>
+              <h3 style={styles.sectionTitle}>Personal Information</h3>
+              <div style={styles.form}>
+                <div>
+                  <label style={styles.label}>First Name *</label>
+                  <input type="text" name="firstName" style={styles.input} value={newCustomer.firstName} onChange={handleNewCustomerChange} required />
+                </div>
+                <div>
+                  <label style={styles.label}>Last Name *</label>
+                  <input type="text" name="lastName" style={styles.input} value={newCustomer.lastName} onChange={handleNewCustomerChange} required />
+                </div>
+                <div style={styles.formFull}>
+                  <label style={styles.label}>Email *</label>
+                  <input type="email" name="email" style={styles.input} value={newCustomer.email} onChange={handleNewCustomerChange} required />
+                </div>
+                <div>
+                  <label style={styles.label}>Phone *</label>
+                  <input type="tel" name="phone" style={styles.input} value={newCustomer.phone} onChange={handleNewCustomerChange} required />
+                </div>
+                <div>
+                  <label style={styles.label}>SSN *</label>
+                  <input type="text" name="ssn" style={styles.input} placeholder="XXX-XX-XXXX" value={newCustomer.ssn} onChange={handleSSNChange} required />
+                </div>
+                <div>
+                  <label style={styles.label}>Date of Birth *</label>
+                  <input type="date" name="dateOfBirth" style={styles.input} value={newCustomer.dateOfBirth} onChange={handleNewCustomerChange} required />
+                </div>
               </div>
             </div>
 
-            <button type="submit" style={styles.button}>
-              Create Customer & Continue
+            {/* Address */}
+            <div style={styles.sectionDivider}>
+              <h3 style={styles.sectionTitle}>Address</h3>
+              <div style={styles.form}>
+                <div style={styles.formFull}>
+                  <label style={styles.label}>Street Address *</label>
+                  <input type="text" name="addressLine1" style={styles.input} value={newCustomer.addressLine1} onChange={handleNewCustomerChange} required />
+                </div>
+                <div style={styles.formFull}>
+                  <label style={styles.label}>Apt/Suite/Unit</label>
+                  <input type="text" name="addressLine2" style={styles.input} value={newCustomer.addressLine2} onChange={handleNewCustomerChange} />
+                </div>
+                <div>
+                  <label style={styles.label}>City *</label>
+                  <input type="text" name="city" style={styles.input} value={newCustomer.city} onChange={handleNewCustomerChange} required />
+                </div>
+                <div>
+                  <label style={styles.label}>State *</label>
+                  <input type="text" name="state" style={styles.input} value={newCustomer.state} onChange={handleNewCustomerChange} required />
+                </div>
+                <div>
+                  <label style={styles.label}>ZIP Code *</label>
+                  <input type="text" name="zipCode" style={styles.input} value={newCustomer.zipCode} onChange={handleNewCustomerChange} required />
+                </div>
+                <div>
+                  <label style={styles.label}>Country *</label>
+                  <select name="country" style={styles.select} value={newCustomer.country} onChange={handleNewCustomerChange}>
+                    <option value="USA">United States</option>
+                    <option value="Canada">Canada</option>
+                    <option value="UK">United Kingdom</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Identity Verification */}
+            <div style={styles.sectionDivider}>
+              <h3 style={styles.sectionTitle}>Identity Verification</h3>
+              <div style={styles.form}>
+                <div>
+                  <label style={styles.label}>Birth City *</label>
+                  <input type="text" name="birthCity" style={styles.input} value={newCustomer.birthCity} onChange={handleNewCustomerChange} required />
+                </div>
+                <div>
+                  <label style={styles.label}>Birth State/Province *</label>
+                  <input type="text" name="birthState" style={styles.input} value={newCustomer.birthState} onChange={handleNewCustomerChange} required />
+                </div>
+                <div style={styles.formFull}>
+                  <label style={styles.label}>Birth Country *</label>
+                  <input type="text" name="birthCountry" style={styles.input} value={newCustomer.birthCountry} onChange={handleNewCustomerChange} required />
+                </div>
+              </div>
+            </div>
+
+            {/* Financial Information */}
+            <div style={styles.sectionDivider}>
+              <h3 style={styles.sectionTitle}>Financial Information</h3>
+              <div style={styles.form}>
+                <div>
+                  <label style={styles.label}>Employment Status *</label>
+                  <select name="employmentStatus" style={styles.select} value={newCustomer.employmentStatus} onChange={handleNewCustomerChange} required>
+                    <option value="">Select...</option>
+                    {employmentStatuses.map((s, i) => <option key={i} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={styles.label}>Annual Income *</label>
+                  <select name="annualIncome" style={styles.select} value={newCustomer.annualIncome} onChange={handleNewCustomerChange} required>
+                    <option value="">Select...</option>
+                    {incomeRanges.map((r, i) => <option key={i} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={styles.label}>Source of Funds *</label>
+                  <select name="sourceOfFunds" style={styles.select} value={newCustomer.sourceOfFunds} onChange={handleNewCustomerChange} required>
+                    <option value="">Select...</option>
+                    {sourceOfFundsOptions.map((s, i) => <option key={i} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={styles.label}>Investment Objective *</label>
+                  <select name="investmentObjective" style={styles.select} value={newCustomer.investmentObjective} onChange={handleNewCustomerChange} required>
+                    <option value="">Select...</option>
+                    {investmentObjectives.map((o, i) => <option key={i} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div style={styles.formFull}>
+                  <label style={styles.label}>Tax Bracket</label>
+                  <select name="taxBracket" style={styles.select} value={newCustomer.taxBracket} onChange={handleNewCustomerChange}>
+                    <option value="">Select...</option>
+                    {taxBrackets.map((t, i) => <option key={i} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Security Questions */}
+            <div style={styles.sectionDivider}>
+              <h3 style={styles.sectionTitle}>Security Questions</h3>
+              <div style={styles.form}>
+                <div style={styles.formFull}>
+                  <label style={styles.label}>Question 1 *</label>
+                  <select name="securityQuestion1" style={styles.select} value={newCustomer.securityQuestion1} onChange={handleNewCustomerChange} required>
+                    <option value="">Select a question</option>
+                    {securityQuestions.map((q, i) => <option key={i} value={q}>{q}</option>)}
+                  </select>
+                </div>
+                <div style={styles.formFull}>
+                  <label style={styles.label}>Answer 1 *</label>
+                  <input type="text" name="securityAnswer1" style={styles.input} value={newCustomer.securityAnswer1} onChange={handleNewCustomerChange} required />
+                </div>
+                <div style={styles.formFull}>
+                  <label style={styles.label}>Question 2 *</label>
+                  <select name="securityQuestion2" style={styles.select} value={newCustomer.securityQuestion2} onChange={handleNewCustomerChange} required>
+                    <option value="">Select a question</option>
+                    {securityQuestions.map((q, i) => <option key={i} value={q}>{q}</option>)}
+                  </select>
+                </div>
+                <div style={styles.formFull}>
+                  <label style={styles.label}>Answer 2 *</label>
+                  <input type="text" name="securityAnswer2" style={styles.input} value={newCustomer.securityAnswer2} onChange={handleNewCustomerChange} required />
+                </div>
+                <div style={styles.formFull}>
+                  <label style={styles.label}>Question 3 *</label>
+                  <select name="securityQuestion3" style={styles.select} value={newCustomer.securityQuestion3} onChange={handleNewCustomerChange} required>
+                    <option value="">Select a question</option>
+                    {securityQuestions.map((q, i) => <option key={i} value={q}>{q}</option>)}
+                  </select>
+                </div>
+                <div style={styles.formFull}>
+                  <label style={styles.label}>Answer 3 *</label>
+                  <input type="text" name="securityAnswer3" style={styles.input} value={newCustomer.securityAnswer3} onChange={handleNewCustomerChange} required />
+                </div>
+              </div>
+            </div>
+
+            {/* Password */}
+            <div style={styles.sectionDivider}>
+              <h3 style={styles.sectionTitle}>Password</h3>
+              <div style={styles.form}>
+                <div style={styles.formFull}>
+                  <label style={styles.label}>Password *</label>
+                  <div style={{position: 'relative'}}>
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      name="password" 
+                      style={styles.input} 
+                      value={newCustomer.password} 
+                      onChange={handleNewCustomerChange} 
+                      required 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)} 
+                      style={{position: 'absolute', right: '10px', top: '12px', background: 'none', border: 'none', cursor: 'pointer'}}
+                    >
+                      {showPassword ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                  <p style={{fontSize: '12px', color: '#666', marginTop: '5px'}}>Minimum 8 characters</p>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" style={styles.button} disabled={loading}>
+              {loading ? 'Creating Customer...' : 'Create Customer & Continue'}
             </button>
           </form>
         </div>
@@ -589,44 +1036,66 @@ const AdminOpenAccount = () => {
           <h2 style={{marginBottom: '20px'}}>Choose Account Type for {selectedCustomer.name}</h2>
           
           <div style={styles.accountTypes}>
-            {accountTypes.map(type => (
-              <div
-                key={type.id}
-                style={{
-                  ...styles.accountTypeCard,
-                  ...(accountType === type.id ? styles.accountTypeSelected : {})
-                }}
-                onClick={() => handleAccountTypeSelect(type.id)}
-              >
-                <div style={styles.accountTypeName}>{type.name}</div>
-                <ul style={styles.accountTypeFeatures}>
-                  {type.features.map((f, i) => <li key={i}>✓ {f}</li>)}
-                </ul>
-                <div style={styles.accountTypeRate}>
-                  <span>APY: {type.interest}</span>
-                  <span>Fee: {type.fee}</span>
+            {accountTypes.map(type => {
+              const isAvailable = selectedCustomer.availableAccountTypes?.includes(type.id);
+              
+              return (
+                <div
+                  key={type.id}
+                  style={{
+                    ...styles.accountTypeCard,
+                    ...(accountType === type.id ? styles.accountTypeSelected : {}),
+                    ...(!isAvailable ? { opacity: 0.5, cursor: 'not-allowed' } : {})
+                  }}
+                  onClick={() => isAvailable && handleAccountTypeSelect(type.id)}
+                >
+                  <div style={styles.accountTypeName}>{type.name}</div>
+                  {!isAvailable && (
+                    <div style={{color: '#ef4444', fontSize: '12px', marginBottom: '8px'}}>
+                      ⚠️ Already exists
+                    </div>
+                  )}
+                  <ul style={styles.accountTypeFeatures}>
+                    {type.features.map((f, i) => <li key={i}>✓ {f}</li>)}
+                  </ul>
+                  <div style={styles.accountTypeRate}>
+                    <span>APY: {type.interest}</span>
+                    <span>Fee: {type.fee}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          <div style={styles.depositSection}>
-            <label style={styles.label}>Initial Deposit Amount ($)</label>
-            <input
-              type="number"
-              style={styles.input}
-              value={initialDeposit}
-              onChange={(e) => setInitialDeposit(e.target.value)}
-              placeholder="Minimum $25"
-              min="25"
-            />
-          </div>
+          {accountType === 'BUSINESS' && (
+            <div style={styles.depositSection}>
+              <p style={{color: '#eab308', marginBottom: '10px'}}>
+                ⚠️ Business accounts require approval. Our team will review and activate within 1-2 business days.
+              </p>
+            </div>
+          )}
+
+          {(accountType === 'CHECKING' || accountType === 'SAVINGS') && (
+            <div style={styles.depositSection}>
+              <label style={styles.label}>Initial Deposit Amount ($)</label>
+              <input
+                type="number"
+                style={styles.input}
+                value={initialDeposit}
+                onChange={(e) => setInitialDeposit(e.target.value)}
+                placeholder="$0 minimum"
+                min="0"
+                step="100"
+              />
+            </div>
+          )}
 
           <button
             style={styles.button}
             onClick={handleOpenAccount}
+            disabled={loading || !accountType}
           >
-            Open Account
+            {loading ? 'Processing...' : 'Open Account'}
           </button>
         </div>
       )}
@@ -636,7 +1105,9 @@ const AdminOpenAccount = () => {
         <div style={styles.content}>
           <div style={styles.successCard}>
             <div style={styles.successIcon}>🎉</div>
-            <h2 style={{color: '#22c55e', marginBottom: '20px'}}>Account Successfully Opened!</h2>
+            <h2 style={{color: '#22c55e', marginBottom: '20px'}}>
+              {newAccount.requiresApproval ? 'Application Submitted!' : 'Account Successfully Opened!'}
+            </h2>
             
             <div style={styles.accountDetails}>
               <div style={styles.detailRow}>
@@ -651,24 +1122,34 @@ const AdminOpenAccount = () => {
                 <span>Account Number:</span>
                 <span style={{fontWeight: 'bold'}}>{newAccount.accountNumber}</span>
               </div>
-              <div style={styles.detailRow}>
-                <span>Routing Number:</span>
-                <span style={{fontWeight: 'bold'}}>{newAccount.routingNumber}</span>
-              </div>
+              {newAccount.routingNumber !== 'Pending' && (
+                <div style={styles.detailRow}>
+                  <span>Routing Number:</span>
+                  <span style={{fontWeight: 'bold'}}>{newAccount.routingNumber}</span>
+                </div>
+              )}
               {newAccount.cardNumber && (
                 <div style={styles.detailRow}>
                   <span>Debit Card:</span>
                   <span style={{fontWeight: 'bold'}}>{newAccount.cardNumber}</span>
                 </div>
               )}
-              <div style={styles.detailRow}>
-                <span>Initial Deposit:</span>
-                <span style={{fontWeight: 'bold', color: '#22c55e'}}>${newAccount.initialDeposit}</span>
-              </div>
+              {newAccount.initialDeposit > 0 && (
+                <div style={styles.detailRow}>
+                  <span>Initial Deposit:</span>
+                  <span style={{fontWeight: 'bold', color: '#22c55e'}}>${newAccount.initialDeposit}</span>
+                </div>
+              )}
               <div style={styles.detailRow}>
                 <span>Opened Date:</span>
                 <span style={{fontWeight: 'bold'}}>{newAccount.openedDate}</span>
               </div>
+              {newAccount.requiresApproval && (
+                <div style={styles.detailRow}>
+                  <span>Status:</span>
+                  <span style={{fontWeight: 'bold', color: '#eab308'}}>Pending Approval</span>
+                </div>
+              )}
             </div>
 
             <button

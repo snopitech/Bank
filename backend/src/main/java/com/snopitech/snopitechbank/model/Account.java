@@ -155,6 +155,15 @@ public LocalDateTime getDisabledDate() {
     return disabledDate;
 }
 
+@Column(name = "opened_by_employee_id")
+private Long openedByEmployeeId;
+
+@Column(name = "opened_by_employee_name")
+private String openedByEmployeeName;
+
+@Column(name = "opened_at")
+private LocalDateTime openedAt;
+
 public void setDisabledDate(LocalDateTime disabledDate) {
     this.disabledDate = disabledDate;
 }

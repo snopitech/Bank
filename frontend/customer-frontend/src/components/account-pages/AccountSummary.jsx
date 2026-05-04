@@ -160,7 +160,8 @@ const AccountSummary = () => {
     try {
       if (!user?.id) return [];
       
-      const response = await fetch(`${API_BASE}/api/loan/accounts`, {
+      // FIXED: Added userId parameter to the URL
+      const response = await fetch(`${API_BASE}/api/loan/accounts?userId=${user.id}`, {
         headers: {
           'sessionId': user.sessionId
         }

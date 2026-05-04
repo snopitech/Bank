@@ -39,33 +39,33 @@ public class LoanAccountController {
      * Get all loan accounts for the logged-in user
      */
     @GetMapping("/accounts")
-    public ResponseEntity<?> getUserLoanAccounts() {
-        try {
-            List<LoanAccount> accounts = loanAccountRepository.findAll();
-            
-            // Return simplified data for dashboard
-            List<Map<String, Object>> response = accounts.stream().map(account -> {
-                Map<String, Object> map = new HashMap<>();
-                map.put("id", account.getId());
-                map.put("maskedAccountNumber", account.getMaskedAccountNumber());
-                map.put("approvedAmount", account.getApprovedAmount());
-                map.put("outstandingBalance", account.getOutstandingBalance());
-                map.put("monthlyPayment", account.getMonthlyPayment());
-                map.put("interestRate", 2.5); // Hardcode to 2.5%
-                map.put("nextPaymentDate", account.getNextPaymentDate());
-                map.put("paymentsMade", account.getPaymentsMade());
-                map.put("totalPayments", account.getTotalPayments());
-                map.put("status", account.getStatus());
-                map.put("startDate", account.getStartDate());
-                map.put("maturityDate", account.getMaturityDate());
-                return map;
-            }).collect(Collectors.toList());
-            
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+public ResponseEntity<?> getUserLoanAccounts(@RequestParam Long userId) {
+    try {
+        List<LoanAccount> accounts = loanAccountRepository.findByUserId(userId);
+        
+        // Return simplified data for dashboard
+        List<Map<String, Object>> response = accounts.stream().map(account -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", account.getId());
+            map.put("maskedAccountNumber", account.getMaskedAccountNumber());
+            map.put("approvedAmount", account.getApprovedAmount());
+            map.put("outstandingBalance", account.getOutstandingBalance());
+            map.put("monthlyPayment", account.getMonthlyPayment());
+            map.put("interestRate", 2.5);
+            map.put("nextPaymentDate", account.getNextPaymentDate());
+            map.put("paymentsMade", account.getPaymentsMade());
+            map.put("totalPayments", account.getTotalPayments());
+            map.put("status", account.getStatus());
+            map.put("startDate", account.getStartDate());
+            map.put("maturityDate", account.getMaturityDate());
+            return map;
+        }).collect(Collectors.toList());
+        
+        return ResponseEntity.ok(response);
+    } catch (Exception e) {
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
     }
+}
 
     /**
      * GET /api/loan/accounts/{id}

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const API_BASE = "";
 
 const AdminUsers = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -528,10 +530,10 @@ const AdminUsers = () => {
         <div style={{ background: 'white', borderRadius: '12px', padding: '20px 30px', marginBottom: '24px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#333', margin: 0 }}>User Management</h1>
           <button 
-            onClick={() => window.history.back()}
+            onClick={() => navigate('/dashboard')}
             style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
           >
-            ← Back
+            ← Back to Dashboard
           </button>
         </div>
       </div>

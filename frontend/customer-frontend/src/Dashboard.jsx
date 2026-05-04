@@ -248,7 +248,7 @@ const fetchLoanAccounts = async () => {
     const user = JSON.parse(localStorage.getItem("loggedInUser"));
     if (!user?.id) return [];
     
-    const response = await fetch(`${API_BASE}/api/loan/accounts`, {
+    const response = await fetch(`${API_BASE}/api/loan/accounts?userId=${user.id}`, {
       headers: { 'sessionId': user.sessionId }
     });
     
@@ -1324,25 +1324,23 @@ const openTransferModal = (type) => {
                   )}
                 </div>
                 
-                <div className="relative bg-gradient-to-r from-emerald-50 to-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border border-emerald-100 transform hover:scale-[1.01] transition-transform duration-300">
-                  <AccountCard
-                    title="Everyday Savings"
-                    account={savingsAccount || savingsMeta}
-                    routingNumber={routingNumber}
-                    balanceChange={balanceChange.savings}
-                    lastUpdated={lastUpdated}
-                    accountType="SAVINGS"
-                  />
-                  {balanceChange.savings !== 0 && (
-                    <div className={`absolute -top-2 -right-2 px-3 py-1.5 rounded-full text-sm font-bold shadow-lg ${
-                      balanceChange.savings > 0 
-                        ? 'bg-green-100 text-green-800 animate-bounce' 
-                        : 'bg-red-100 text-red-800 animate-bounce'
-                    }`}>
-                      {balanceChange.savings > 0 ? '▲' : '▼'} ${Math.abs(balanceChange.savings).toFixed(2)}
-                    </div>
-                  )}
-                </div>
+              {savingsAccount && (
+  <div className="relative bg-gradient-to-r from-emerald-50 to-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 border border-emerald-100 transform hover:scale-[1.01] transition-transform duration-300">
+    <AccountCard
+      title="Everyday Savings"
+      account={savingsAccount}
+      routingNumber={routingNumber}
+      balanceChange={balanceChange.savings}
+      lastUpdated={lastUpdated}
+      accountType="SAVINGS"
+    />
+    {balanceChange.savings !== 0 && (
+      <div className="absolute -top-2 -right-2 px-3 py-1.5 rounded-full text-sm font-bold shadow-lg bg-green-100 text-green-800 animate-bounce">
+        {balanceChange.savings > 0 ? '▲' : '▼'} ${Math.abs(balanceChange.savings).toFixed(2)}
+      </div>
+    )}
+  </div>
+)}
 
                 {/* Business Accounts - if any exist */}
 {businessAccounts.length > 0 && businessAccounts.map((business) => (

@@ -82,10 +82,10 @@ export default function useHeaderData() {
         }
       }
 
-      // Fetch loan accounts - with sessionId header
+      // Fetch loan accounts - with sessionId header and userId parameter
       if (user?.id && user?.sessionId) {
         try {
-          const loanRes = await fetch(`${API_BASE}/api/loan/accounts`, {
+          const loanRes = await fetch(`${API_BASE}/api/loan/accounts?userId=${user.id}`, {
             headers: {
               'sessionId': user.sessionId
             }

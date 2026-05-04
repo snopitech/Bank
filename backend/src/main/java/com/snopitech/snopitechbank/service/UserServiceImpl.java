@@ -59,7 +59,7 @@ public class UserServiceImpl implements UserService {
         this.creditApplicationRepository = creditApplicationRepository;
     }
 
-   @Override
+@Override
 public User createUser(User user) {
     // Generate customer ID based on last ID, not count
     String lastCustomerId = userRepository.findLastCustomerId();
@@ -77,11 +77,9 @@ public User createUser(User user) {
     
     User savedUser = userRepository.save(user);
 
+    // ONLY create Checking account (Savings and Loan removed)
     Account checking = accountService.createCheckingAccount(savedUser);
-    Account savings = accountService.createSavingsAccount(savedUser);
-
     savedUser.getAccounts().add(checking);
-    savedUser.getAccounts().add(savings);
 
     return userRepository.save(savedUser);
 }

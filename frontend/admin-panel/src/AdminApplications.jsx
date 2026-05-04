@@ -200,20 +200,27 @@ const AdminApplications = () => {
       gap: '15px',
       flexWrap: 'wrap'
     },
-    filterButton: {
-      padding: '10px 20px',
-      borderRadius: '8px',
-      border: '1px solid #e0e0e0',
-      background: 'white',
-      cursor: 'pointer',
-      fontSize: '14px',
-      transition: 'all 0.2s'
-    },
-    activeFilter: {
-      background: '#667eea',
-      color: 'white',
-      borderColor: '#667eea'
-    },
+
+
+  filterContainer: {
+  display: 'flex',
+  gap: '8px'
+},
+filterButton: {
+  padding: '8px 16px',
+  borderRadius: '6px',
+  border: '1px solid #e0e0e0',
+  background: 'white',
+  cursor: 'pointer',
+  fontSize: '13px'
+},
+activeFilter: {
+  background: '#667eea',
+  color: 'white',
+  border: '1px solid #667eea'
+},
+
+
     table: {
       background: 'white',
       borderRadius: '12px',

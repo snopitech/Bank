@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // src/pages/AccountsPage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -51,19 +52,168 @@ import CardLimits from '../components/account-pages/CardLimits';
 import DigitalWallets from '../components/account-pages/DigitalWallets';
 import ForeignCurrency from '../components/account-pages/ForeignCurrency';
 import BusinessAccountApplications from '../components/account-pages/BusinessAccountApplications';
-import CreditAccountApplications from '../components/account-pages/CreditAccountApplications'; // Add this import
+import CreditAccountApplications from '../components/account-pages/CreditAccountApplications';
 import LoanApplicationForm from '../components/account-pages/LoanApplicationForm';
 import CheckDeposit from '../components/account-pages/CheckDeposit';
 
 const AccountsPage = () => {
   const navigate = useNavigate();
   const [selectedSection, setSelectedSection] = useState('summary');
-  const [showAccountOptions, setShowAccountOptions] = useState(false); // For account type selection
+  const [showAccountOptions, setShowAccountOptions] = useState(false);
+
+  // Open Checking Account Component
+  const OpenCheckingAccount = () => {
+    const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState(false);
+    const [account, setAccount] = useState(null);
+
+    const handleOpenAccount = async () => {
+      setLoading(true);
+      try {
+        const user = JSON.parse(localStorage.getItem("loggedInUser"));
+        
+        const response = await fetch("http://localhost:8080/api/banker/customer/accounts/open", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customerId: user.id,
+            accountType: "CHECKING"
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to open checking account");
+        }
+        
+        setAccount(data);
+        setSuccess(true);
+        
+        // Refresh user data in localStorage
+        const updatedUser = { ...user, accounts: [...(user.accounts || []), data] };
+        localStorage.setItem("loggedInUser", JSON.stringify(updatedUser));
+        
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (success) {
+      return (
+        <div className="text-center py-8">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircleIcon className="h-8 w-8 text-green-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Checking Account Opened!</h2>
+          <p className="text-gray-600 mb-4">Account Number: {account?.accountNumber}</p>
+          <button
+            onClick={() => setSelectedSection('summary')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Return to Account Summary
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="max-w-md mx-auto py-8">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Open Checking Account</h2>
+        <p className="text-gray-600 mb-6">
+          Open a checking account for everyday spending, bill payments, and debit card access.
+        </p>
+        <button
+          onClick={handleOpenAccount}
+          disabled={loading}
+          className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+        >
+          {loading ? "Opening..." : "Open Checking Account"}
+        </button>
+      </div>
+    );
+  };
+
+  // Open Savings Account Component
+  const OpenSavingsAccount = () => {
+    const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState(false);
+    const [account, setAccount] = useState(null);
+
+    const handleOpenAccount = async () => {
+      setLoading(true);
+      try {
+        const user = JSON.parse(localStorage.getItem("loggedInUser"));
+        
+        const response = await fetch("http://localhost:8080/api/banker/customer/accounts/open", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customerId: user.id,
+            accountType: "SAVINGS"
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to open savings account");
+        }
+        
+        setAccount(data);
+        setSuccess(true);
+        
+        // Refresh user data in localStorage
+        const updatedUser = { ...user, accounts: [...(user.accounts || []), data] };
+        localStorage.setItem("loggedInUser", JSON.stringify(updatedUser));
+        
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (success) {
+      return (
+        <div className="text-center py-8">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircleIcon className="h-8 w-8 text-green-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Savings Account Opened!</h2>
+          <p className="text-gray-600 mb-4">Account Number: {account?.accountNumber}</p>
+          <button
+            onClick={() => setSelectedSection('summary')}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+          >
+            Return to Account Summary
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="max-w-md mx-auto py-8">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Open Savings Account</h2>
+        <p className="text-gray-600 mb-6">
+          Open a high-yield savings account to start earning interest on your money.
+        </p>
+        <button
+          onClick={handleOpenAccount}
+          disabled={loading}
+          className="w-full py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-400"
+        >
+          {loading ? "Opening..." : "Open Savings Account"}
+        </button>
+      </div>
+    );
+  };
 
   // Contact Admin Page Component
   const ContactAdmin = () => (
     <div className="max-w-2xl mx-auto py-8">
-      {/* Header with Icon */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-amber-100 rounded-full mb-4">
           <BuildingOfficeIcon className="h-10 w-10 text-amber-600" />
@@ -74,7 +224,6 @@ const AccountsPage = () => {
         </p>
       </div>
 
-      {/* Information Card */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-6">
         <div className="bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-4">
           <h3 className="text-lg font-semibold text-white flex items-center">
@@ -119,7 +268,6 @@ const AccountsPage = () => {
         </div>
       </div>
 
-      {/* Contact Card */}
       <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="bg-gray-800 px-6 py-4">
           <h3 className="text-lg font-semibold text-white flex items-center">
@@ -135,7 +283,6 @@ const AccountsPage = () => {
           </p>
 
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Email Card */}
             <div className="bg-gray-50 rounded-lg p-5 border border-gray-200 hover:border-amber-300 hover:shadow-md transition-all group">
               <div className="flex items-center mb-3">
                 <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center mr-3 group-hover:bg-amber-200 transition">
@@ -154,7 +301,6 @@ const AccountsPage = () => {
               </p>
             </div>
 
-            {/* Phone Card */}
             <div className="bg-gray-50 rounded-lg p-5 border border-gray-200 hover:border-amber-300 hover:shadow-md transition-all group">
               <div className="flex items-center mb-3">
                 <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center mr-3 group-hover:bg-amber-200 transition">
@@ -174,7 +320,6 @@ const AccountsPage = () => {
             </div>
           </div>
 
-          {/* Business Hours */}
           <div className="mt-6 pt-4 border-t border-gray-200">
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">📞 Live agent assistance available during business hours</span>
@@ -186,7 +331,6 @@ const AccountsPage = () => {
         </div>
       </div>
 
-      {/* Additional Options */}
       <div className="mt-6 text-center">
         <p className="text-sm text-gray-500 mb-4">Prefer to speak with someone in person?</p>
         <button
@@ -198,7 +342,6 @@ const AccountsPage = () => {
         </button>
       </div>
 
-      {/* Back Button */}
       <div className="mt-8 text-center">
         <button
           onClick={() => setSelectedSection('summary')}
@@ -285,6 +428,40 @@ const AccountsPage = () => {
         <p className="text-gray-600 mb-6">Choose the type of account you'd like to open</p>
         
         <div className="space-y-4">
+          {/* Checking Account Option */}
+          <button
+            onClick={() => {
+              setSelectedSection('checking-account');
+              setShowAccountOptions(false);
+            }}
+            className="w-full p-4 border-2 border-blue-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition text-left flex items-center"
+          >
+            <div className="bg-blue-100 p-3 rounded-full mr-4">
+              <BanknotesIcon className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-800">Checking Account</h3>
+              <p className="text-sm text-gray-500">Everyday spending and bill payments</p>
+            </div>
+          </button>
+
+          {/* Savings Account Option */}
+          <button
+            onClick={() => {
+              setSelectedSection('savings-account');
+              setShowAccountOptions(false);
+            }}
+            className="w-full p-4 border-2 border-emerald-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition text-left flex items-center"
+          >
+            <div className="bg-emerald-100 p-3 rounded-full mr-4">
+              <BanknotesIcon className="h-6 w-6 text-emerald-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-800">Savings Account</h3>
+              <p className="text-sm text-gray-500">Start saving with high-yield interest</p>
+            </div>
+          </button>
+
           {/* Business Account Option */}
           <button
             onClick={() => {
@@ -318,24 +495,25 @@ const AccountsPage = () => {
               <p className="text-sm text-gray-500">Build credit and earn rewards</p>
             </div>
           </button>
+
           {/* Loan Account Option */}
           <button
-          onClick={() => {
-          setSelectedSection('loan-account');
-          setShowAccountOptions(false);
-          }}
-          className="w-full p-4 border-2 border-green-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition text-left flex items-center"
+            onClick={() => {
+              setSelectedSection('loan-account');
+              setShowAccountOptions(false);
+            }}
+            className="w-full p-4 border-2 border-green-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition text-left flex items-center"
           >
-          <div className="bg-green-100 p-3 rounded-full mr-4">
-          <BanknotesIcon className="h-6 w-6 text-green-600" />
-          </div>
-          <div>
-          <h3 className="font-semibold text-gray-800">Loan Account</h3>
-          <p className="text-sm text-gray-500">Apply for a personal loan</p>
-          </div>
+            <div className="bg-green-100 p-3 rounded-full mr-4">
+              <BanknotesIcon className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-800">Loan Account</h3>
+              <p className="text-sm text-gray-500">Apply for a personal loan</p>
+            </div>
           </button>
-
         </div>
+
         <button
           onClick={() => setShowAccountOptions(false)}
           className="mt-6 w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
@@ -344,10 +522,10 @@ const AccountsPage = () => {
         </button>
       </div>
     </div>
-    );
+  );
 
-     // Render the selected content component
-    const renderContent = () => {
+  // Render the selected content component
+  const renderContent = () => {
     switch(selectedSection) {
       case 'summary':
         return <AccountSummary />;
@@ -403,6 +581,10 @@ const AccountsPage = () => {
         return <LoanApplicationForm />;
       case 'deposit-check':
         return <CheckDeposit />;
+      case 'checking-account':
+        return <OpenCheckingAccount />;
+      case 'savings-account':
+        return <OpenSavingsAccount />;
       default:
         return (
           <div className="p-4">
